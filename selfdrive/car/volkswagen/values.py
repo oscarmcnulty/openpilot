@@ -79,6 +79,7 @@ class CAR:
   AUDI_A3_MK3 = "AUDI A3 3RD GEN"                   # Chassis 8V/FF, Mk3 Audi A3 and variants
   AUDI_Q2_MK1 = "AUDI Q2 1ST GEN"                   # Chassis GA, Mk1 Audi Q2 (RoW) and Q2L (China only)
   AUDI_Q3_MK2 = "AUDI Q3 2ND GEN"                   # Chassis 8U/F3/FS, Mk2 Audi Q3 and variants
+  AUDI_Q5_MK1 = "AUDI Q5 1ST GEN"                   # Chassis B8/B8.5, Mk1 Audi Q5 and variants
   SEAT_ATECA_MK1 = "SEAT ATECA 1ST GEN"             # Chassis 5F, Mk1 SEAT Ateca and CUPRA Ateca
   SEAT_LEON_MK3 = "SEAT LEON 3RD GEN"               # Chassis 5F, Mk3 SEAT Leon and variants
   SKODA_KAMIQ_MK1 = "SKODA KAMIQ 1ST GEN"           # Chassis NW, Mk1 Skoda Kamiq
@@ -604,6 +605,24 @@ FW_VERSIONS = {
     (Ecu.fwdRadar, 0x757, None): [
       b'\xf1\x872Q0907572R \xf1\x890372',
       b'\xf1\x872Q0907572T \xf1\x890383',
+    ],
+  },
+  CAR.AUDI_Q5_MK1: {
+    (Ecu.engine, 0x7e0, None): [
+      b'\xf1\x878R0907551F \xf1\x890007',
+    ],
+    (Ecu.transmission, 0x7e1, None): [
+      b'\xf1\x878R0927158AM \xf1\x891003',
+    ],
+    # SRS needs to be probed on the test car
+    #(Ecu.srs, 0x715, None): [
+    #  b'\xf1\x875Q0959655BD\xf1\x890336\xf1\x82\x1311111111111100311211011231129321312111',
+    #],
+    (Ecu.eps, 0x712, None): [
+      b'\xf1\x878K0907144L \xf1\x890720\xf1\x82\x01\n\x1a',
+    ],
+    (Ecu.fwdRadar, 0x757, None): [
+      b'\xf1\x878R0907561A \xf1\x890100',
     ],
   },
   CAR.SEAT_ATECA_MK1: {
