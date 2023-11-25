@@ -4,7 +4,7 @@ from cereal import car
 from common.numpy_fast import clip, interp
 from common.realtime import DT_MDL
 from common.conversions import Conversions as CV
-from selfdrive.modeld.constants import T_IDXS
+from selfdrive.modeld.constants import ModelConstants
 
 # WARNING: this value was determined based on the model's training distribution,
 #          model predictions above this speed can be unpredictable
@@ -95,7 +95,7 @@ def get_lag_adjusted_curvature(CP, v_ego, psis, curvatures, curvature_rates):
   # TODO this needs more thought, use .2s extra for now to estimate other delays
   delay = CP.steerActuatorDelay + .2
   current_curvature = curvatures[0]
-  psi = interp(delay, T_IDXS[:CONTROL_N], psis)
+  psi = interp(delay, ModelConstants.T_IDXS[:CONTROL_N], psis)
   desired_curvature_rate = curvature_rates[0]
 
   # MPC can plan to turn the wheel and turn back before t_delay. This means
