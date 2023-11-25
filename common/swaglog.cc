@@ -1,4 +1,3 @@
-// hard-forked from https://github.com/commaai/openpilot/tree/05b37552f3a38f914af41f44ccc7c633ad152a15/selfdrive/common/swaglog.cc
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -6,20 +5,22 @@
 #include "common/swaglog.h"
 
 #include <cassert>
+#include <cstdarg>
 #include <cstring>
 #include <limits>
 #include <mutex>
 #include <string>
 
 #include <zmq.h>
-#include "json11.hpp"
+#include "third_party/json11/json11.hpp"
 
 #include "common/util.h"
 #include "common/version.h"
+#include "system/hardware/hw.h"
 
 class SwaglogState : public LogState {
  public:
-  SwaglogState() : LogState("ipc:///tmp/logmessage") {}
+  SwaglogState() : LogState(Path::swaglog_ipc().c_str()) {}
 
   json11::Json::object ctx_j;
 
@@ -37,7 +38,7 @@ class SwaglogState : public LogState {
       }
     }
 
-    // flowpilot bindings
+    // openpilot bindings
     char* dongle_id = getenv("DONGLE_ID");
     if (dongle_id) {
       ctx_j["dongle_id"] = dongle_id;
@@ -46,11 +47,11 @@ class SwaglogState : public LogState {
     if (daemon_name) {
       ctx_j["daemon"] = daemon_name;
     }
-    ctx_j["version"] = FLOWPILOT_VERSION;
+    ctx_j["version"] = COMMA_VERSION;
     ctx_j["dirty"] = !getenv("CLEAN");
 
     // device type
-    ctx_j["device"] = "null"; // TODO
+    ctx_j["device"] = Hardware::get_name();
     LogState::initialize();
   }
 };
@@ -63,8 +64,7 @@ static void log(int levelnum, const char* filename, int lineno, const char* func
   if (levelnum >= s.print_level) {
     printf("%s: %s\n", filename, msg);
   }
-  char levelnum_c = levelnum;
-  zmq_send(s.sock, (levelnum_c + log_s).c_str(), log_s.length() + 1, ZMQ_NOBLOCK);
+  zmq_send(s.sock, log_s.data(), log_s.length(), ZMQ_NOBLOCK);
 }
 
 static void cloudlog_common(int levelnum, const char* filename, int lineno, const char* func,
@@ -86,8 +86,11 @@ static void cloudlog_common(int levelnum, const char* filename, int lineno, cons
     log_j["msg"] = msg_j;
   }
 
-  std::string log_s = ((json11::Json)log_j).dump();
+  std::string log_s;
+  log_s += (char)levelnum;
+  ((json11::Json)log_j).dump(log_s);
   log(levelnum, filename, lineno, func, msg_buf, log_s);
+
   free(msg_buf);
 }
 
@@ -134,4 +137,3 @@ void cloudlog_te(int levelnum, const char* filename, int lineno, const char* fun
   cloudlog_t_common(levelnum, filename, lineno, func, frame_id, fmt, args);
   va_end(args);
 }
-
