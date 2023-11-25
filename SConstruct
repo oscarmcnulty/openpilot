@@ -42,16 +42,16 @@ SHARED = False
 
 lenv = {
   "PATH": os.environ['PATH'] + ":" + Dir(f"#libs/capnpc-java/{arch}/bin").abspath,
-  "LD_LIBRARY_PATH": [Dir(f"#libs/acados/{arch}/lib").abspath],
+  "LD_LIBRARY_PATH": [Dir(f"#third_party/acados/{arch}/lib").abspath],
   "PYTHONPATH": Dir("#").abspath + ":" + Dir("#pyextra/").abspath,
 
-  "ACADOS_SOURCE_DIR": Dir("#libs/acados/include/acados").abspath,
+  "ACADOS_SOURCE_DIR": Dir("#third_party/acados/include/acados").abspath,
   "ACADOS_PYTHON_INTERFACE_PATH": Dir("#pyextra/acados_template").abspath,
-  "TERA_PATH": Dir("#").abspath + f"/libs/acados/{arch}/t_renderer",
+  "TERA_PATH": Dir("#").abspath + f"/third_party/acados/{arch}/t_renderer",
 }
 
 libpath = [
-      f"#libs/acados/{arch}/lib",
+      f"#third_party/acados/{arch}/lib",
       ]
 
 cflags = []
