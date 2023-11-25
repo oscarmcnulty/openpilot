@@ -80,8 +80,6 @@ cxxflags += ['-DSWAGLOG="\\"common/swaglog.h\\""']
 
 env = Environment(
   ENV=lenv,
-  CC='clang',
-  CXX='clang++',
   CCFLAGS=[
     "-g",
     "-fPIC",
@@ -99,33 +97,44 @@ env = Environment(
     "-Wno-c++11-narrowing"
   ] + cflags + ccflags,
 
-  LINKFLAGS=ldflags,
-  LIBPATH=libpath + [
-    "#cereal",
-    "#libs",
-    "#opendbc/can/",
-    "#common",
-    "#selfdrive/boardd",
+  CPPPATH=cpppath + [
+    "#",
+    "#third_party/acados/include",
+    "#third_party/acados/include/blasfeo/include",
+    "#third_party/acados/include/hpipm/include",
+    "#third_party/catch2/include",
+    "#third_party/libyuv/include",
+    "#third_party/json11",
+    "#third_party/linux/include",
+    "#third_party/snpe/include",
+    "#third_party/mapbox-gl-native-qt/include",
+    "#third_party/qrcode",
     "#third_party",
+    "#cereal",
+    "#opendbc/can",
   ],
+
+  CC='clang',
+  CXX='clang++',
+  LINKFLAGS=ldflags,
 
   RPATH=rpath,
 
   CFLAGS=["-std=gnu11"] + cflags,
   CXXFLAGS=["-std=c++1z"] + cxxflags,
-  CPPPATH=cpppath + [
-    "#",
-    "#libs/acados/include",
-    "#libs/acados/include/blasfeo/include",
-    "#libs/acados/include/hpipm/include",
+  LIBPATH=libpath + [
     "#cereal",
-    "#opendbc/can",
-    "#common",
     "#third_party",
+    "#opendbc/can/",
+    "#common",
+    "#selfdrive/boardd",
   ],
+
   CYTHONCFILESUFFIX=".cpp",
-  toolpath = ['opendbc/site_scons/site_tools'],
-  tools=["default", "cython"]
+  COMPILATIONDB_USE_ABSPATH=True,
+  REDNOSE_ROOT="#",
+  toolpath=["#rednose_repo/site_scons/site_tools"],
+  tools=["default", "cython", "compilation_db", "rednose_filter"]
 )
 
 # Cython build enviroment

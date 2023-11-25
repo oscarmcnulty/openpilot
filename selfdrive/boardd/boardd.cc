@@ -157,7 +157,7 @@ bool safety_setter_thread(std::vector<Panda *> pandas) {
     }
     util::sleep_for(100);
   }
-  LOGW("got %d bytes CarParams", params.size());
+  LOGW("got %lu bytes CarParams", params.size());
 
   AlignedBuffer aligned_buf;
   capnp::FlatArrayMessageReader cmsg(aligned_buf.align(params.data(), params.size()));
@@ -303,7 +303,7 @@ void can_recv_thread(std::vector<Panda *> pandas) {
     } else {
       if (ignition) {
         if ((int)-1*remaining/dt > 1){
-            LOGW("missed cycles (%d) %lld", (int)-1*remaining/dt, remaining);
+            LOGW("missed cycles (%ld) %ld", (int)-1*remaining/dt, remaining);
         }
       }
       next_frame_time = cur_time;
