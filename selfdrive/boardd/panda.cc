@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "cereal/messaging/messaging.h"
-#include "panda/board/dlc_to_len.h"
 #include "common/gpio.h"
 #include "common/swaglog.h"
 #include "common/util.h"
@@ -391,10 +390,6 @@ void Panda::set_power_saving(bool power_saving) {
 
 void Panda::enable_deepsleep() {
   usb_write(0xfb, 0, 0);
-}
-
-void Panda::set_usb_power_mode(cereal::PeripheralState::UsbPowerMode power_mode) {
-  usb_write(0xe6, (uint16_t)power_mode, 0); 
 }
 
 void Panda::send_heartbeat(bool engaged) {

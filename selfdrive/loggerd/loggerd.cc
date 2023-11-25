@@ -37,9 +37,9 @@ void loggerd_thread() {
   std::unique_ptr<Context> ctx(Context::create());
   std::unique_ptr<Poller> poller(Poller::create());
   // subscribe to all socks
-  for (const auto& it : services) {
+  for (const auto& [_, it] : services) {
     if (!it.should_log) continue;
-    LOGD("logging %s (on port %d)", it.name, it.port);
+    LOGD("logging %s (on port %d)", it.name.c_str(), it.port);
 
     SubSocket * sock = SubSocket::create(ctx.get(), it.name);
     assert(sock != NULL);

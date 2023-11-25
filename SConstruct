@@ -12,6 +12,16 @@ cpppath = [
   python_path
 ]
 
+AddOption('--minimal',
+          action='store_false',
+          dest='extras',
+          default=True,
+          help='the minimum build. no tests, tools, etc.')
+
+AddOption('--coverage',
+          action='store_true',
+          help='build with test coverage options')
+
 AddOption('--kaitai',
           action='store_true',
           help='Regenerate kaitai struct parsers')
@@ -209,6 +219,7 @@ SConscript(['third_party/SConscript'])
 
 SConscript(['SConscript'])
 SConscript(['cereal/SConscript'])
+SConscript(['panda/SConscript'])
 SConscript(['panda/board/SConscript'])
 SConscript(['opendbc/can/SConscript'])
 

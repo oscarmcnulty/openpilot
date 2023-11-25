@@ -32,11 +32,6 @@ class CANBUS:
   pt = 0
   cam = 2
 
-class DBC_FILES:
-  mqb = "vw_mqb_2010"  # Used for all cars with MQB-style CAN messaging
-
-DBC = defaultdict(lambda: dbc_dict(DBC_FILES.mqb, None))  # type: Dict[str, Dict[str, str]]
-
 BUTTON_STATES = {
   "accelCruise": False,
   "decelCruise": False,
@@ -88,6 +83,17 @@ class CAR:
   SKODA_SCALA_MK1 = "SKODA SCALA 1ST GEN"           # Chassis NW, Mk1 Skoda Scala and Skoda Kamiq
   SKODA_SUPERB_MK3 = "SKODA SUPERB 3RD GEN"         # Chassis 3V/NP, Mk3 Skoda Superb and variants
   SKODA_OCTAVIA_MK3 = "SKODA OCTAVIA 3RD GEN"       # Chassis NE, Mk3 Skoda Octavia and variants
+
+
+MLB_CARS = {CAR.AUDI_Q5_MK1}
+
+class DBC_FILES:
+  mqb = "vw_mqb_2010"  # Used for all cars with MQB-style CAN messaging
+  mlb = "vw_mlb"
+
+DBC = defaultdict(lambda: dbc_dict(DBC_FILES.mqb, None))  # type: Dict[str, Dict[str, str]]
+for car_type in MLB_CARS:
+  DBC[car_type] = dbc_dict(DBC_FILES.mlb, None)
 
 # All supported cars should return FW from the engine, srs, eps, and fwdRadar. Cars
 # with a manual trans won't return transmission firmware, but all other cars will.
