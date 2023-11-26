@@ -38,20 +38,19 @@ AddOption('--ubsan',
           action='store_true',
           help='turn on UBSan')
 
-SHARED = False
-
 lenv = {
   "PATH": os.environ['PATH'] + ":" + Dir(f"#libs/capnpc-java/{arch}/bin").abspath,
   "LD_LIBRARY_PATH": [Dir(f"#third_party/acados/{arch}/lib").abspath],
-  "PYTHONPATH": Dir("#").abspath + ":" + Dir("#pyextra/").abspath,
+  "PYTHONPATH": Dir("#").abspath + ":" + Dir(f"#third_party/acados").abspath,
 
   "ACADOS_SOURCE_DIR": Dir("#third_party/acados/include/acados").abspath,
-  "ACADOS_PYTHON_INTERFACE_PATH": Dir("#pyextra/acados_template").abspath,
+  "ACADOS_PYTHON_INTERFACE_PATH": Dir("#third_party/acados/acados_template").abspath,
   "TERA_PATH": Dir("#").abspath + f"/third_party/acados/{arch}/t_renderer",
 }
 
 libpath = [
       f"#third_party/acados/{arch}/lib",
+      f"#third_party/libyuv/{arch}/lib",
       ]
 
 cflags = []
@@ -126,15 +125,16 @@ env = Environment(
     "#cereal",
     "#third_party",
     "#opendbc/can/",
-    "#common",
     "#selfdrive/boardd",
+    "#common",
+    "#rednose/helpers",
   ],
 
   CYTHONCFILESUFFIX=".cpp",
   COMPILATIONDB_USE_ABSPATH=True,
   REDNOSE_ROOT="#",
-  toolpath=["#rednose_repo/site_scons/site_tools"],
-  tools=["default", "cython", "compilation_db", "rednose_filter"]
+  tools=["default", "cython", "compilation_db", "rednose_filter"],
+  toolpath=["#rednose_repo/site_scons/site_tools"]
 )
 
 # Cython build enviroment
@@ -155,17 +155,15 @@ else:
 Export('envCython')
 
 QCOM_REPLAY = False
-Export('env', 'arch', 'QCOM_REPLAY', 'SHARED')
+Export('env', 'arch', 'QCOM_REPLAY')
 
 SConscript(['common/SConscript'])
-Import('_common')
-if SHARED:
-  common = abspath(common)
-else:
-  common = [_common, 'json11', 'lmdb']
+Import('_common', '_gpucommon')
 
+common = [_common, 'json11', 'lmdb']
+gpucommon = [_gpucommon]
 
-Export('common')
+Export('common', 'gpucommon')
 
 envCython = env.Clone()
 envCython["CPPPATH"] += [np.get_include()]
@@ -221,11 +219,26 @@ if arch != "larch64":
   })
 
 Export('rednose_config')
+
+# Build rednose library
 SConscript(['rednose/SConscript'])
+
+# Build system services
+SConscript([
+  'system/proclogd/SConscript',
+  'system/ubloxd/SConscript',
+  'system/loggerd/SConscript',
+])
+if arch != "Darwin":
+  SConscript([
+    'system/camerad/SConscript',
+    'system/sensord/SConscript',
+    'system/logcatd/SConscript',
+  ])
+
 
 SConscript(['third_party/SConscript'])
 
-SConscript(['SConscript'])
 SConscript(['cereal/SConscript'])
 SConscript(['panda/SConscript'])
 SConscript(['panda/board/SConscript'])
@@ -244,7 +257,6 @@ SConscript(['selfdrive/controls/lib/longitudinal_mpc_lib/SConscript'])
 
 SConscript(['selfdrive/locationd/SConscript'])
 SConscript(['selfdrive/boardd/SConscript'])
-SConscript(['selfdrive/loggerd/SConscript'])
 
 if GetOption('test'):
   SConscript('panda/tests/safety/SConscript')

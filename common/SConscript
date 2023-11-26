@@ -2,14 +2,27 @@ Import('env', 'envCython', 'arch')
 
 common_libs = [
   'params.cc',
+  'statlog.cc',
   'swaglog.cc',
   'util.cc',
-  'ratekeeper.cc',
+  'i2c.cc',
+  'watchdog.cc',
+  'ratekeeper.cc'
 ]
+
+if arch != "Darwin":
+  common_libs.append('gpio.cc')
 
 _common = env.Library('common', common_libs, LIBS=["json11", "lmdb"])
 
 Export('_common')
+
+files = [
+  'clutil.cc',
+]
+
+_gpucommon = env.Library('gpucommon', files)
+Export('_common', '_gpucommon')
 
 if GetOption('test'):
   env.Program('tests/test_util', ['tests/test_util.cc'], LIBS=[_common])
