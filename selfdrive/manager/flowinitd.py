@@ -160,12 +160,23 @@ def main():
                         running_daemons.append("%s%s\u001b[0m" % ("\u001b[31m", service.name))
                         #if service.communicated:
                         #    continue
-                        _, stderr = service.proc.communicate()
-                        if stderr is not None:
-                            stderr = stderr.decode("utf-8")
+                        #_, stderr = service.proc.communicate()
+                        #if stderr is not None:
+                        #    stderr = stderr.decode("utf-8")
+                        #    print("%s%s\u001b[0m" % ("\u001b[31m", f"[{service.name}] " + stderr))
+                        #    if "KeyboardInterrupt" not in stderr:
+                        #        capture_error(stderr, level="error")
+                        try:
+                            subprocess.check_output(service.proc, stderr=subprocess.PIPE)
+                        except subprocess.CalledProcessError as e:
+                            e.stderr = stderr.decode(sys.getfilesystemencoding())
                             print("%s%s\u001b[0m" % ("\u001b[31m", f"[{service.name}] " + stderr))
                             if "KeyboardInterrupt" not in stderr:
                                 capture_error(stderr, level="error")
+                            print('exit code: {}'.format(e.returncode))
+                            print('stdout: {}'.format(e.output.decode(sys.getfilesystemencoding())))
+                            print('stderr: {}'.format(e.stderr.decode(sys.getfilesystemencoding())))
+                        
                 running_daemons.append("%s%s\u001b[0m" % ("\u001b[32m", "flowinitd"))
                 if flowpilot_running():
                     running_daemons.append("%s%s\u001b[0m" % ("\u001b[32m", "modeld camerad sensord ui soundd"))
