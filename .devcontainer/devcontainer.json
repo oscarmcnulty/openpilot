@@ -1,22 +1,48 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
 {
-	"name": "Ubuntu",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/base:focal"
-
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
-
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
-
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "uname -a",
-
-	// Configure tool-specific properties.
-	// "customizations": {},
-
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
+  "name": "openpilot devcontainer",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "postCreateCommand": ".devcontainer/container_post_create.sh",
+  "postStartCommand": ".devcontainer/container_post_start.sh",
+  "initializeCommand": [".devcontainer/host_setup"],
+  "privileged": true,
+  "containerEnv": {
+    "DISPLAY": "${localEnv:DISPLAY}",
+    "PYTHONPATH": "${containerWorkspaceFolder}",
+    "TERM": "xterm-256color",
+    "CARLA_HOST": "host.docker.internal",
+    "force_color_prompt": "1"
+  },
+  "runArgs": [
+    "--volume=/tmp/.X11-unix:/tmp/.X11-unix",
+    "--volume=${localWorkspaceFolder}/.devcontainer/.host/.Xauthority:/home/batman/.Xauthority",
+    "--volume=${localEnv:HOME}/.comma:/home/batman/.comma",
+    "--volume=/tmp/comma_download_cache:/tmp/comma_download_cache",
+    "--volume=/tmp/devcontainer_scons_cache:/tmp/scons_cache",
+    "--shm-size=1G",
+    "--add-host=host.docker.internal:host-gateway", // required to use host.docker.internal on linux
+    "--publish=0.0.0.0:8070-8079:8070-8079"  // body ZMQ services
+  ],
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {
+      "installZsh": false,
+      "installOhMyZsh": false,
+      "upgradePackages": false,
+      "username": "batman"
+    }
+  },
+  "containerUser": "batman",
+  "remoteUser": "batman",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-vscode.cpptools",
+        "ms-toolsai.jupyter",
+        "guyskk.language-cython",
+        "lharri73.dbc"
+      ]
+    }
+  }
 }
