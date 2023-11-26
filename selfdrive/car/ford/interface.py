@@ -1,72 +1,105 @@
-# hard-forked from https://github.com/commaai/openpilot/tree/05b37552f3a38f914af41f44ccc7c633ad152a15/selfdrive/car/ford/interface.py
 from cereal import car
-from common.conversions import Conversions as CV
-from selfdrive.car.ford.values import MAX_ANGLE
-from selfdrive.car import STD_CARGO_KG, scale_rot_inertia, scale_tire_stiffness, gen_empty_fingerprint, get_safety_config
-from selfdrive.car.interfaces import CarInterfaceBase
+from panda import Panda
+from openpilot.common.conversions import Conversions as CV
+from openpilot.selfdrive.car import get_safety_config
+from openpilot.selfdrive.car.ford.fordcan import CanBus
+from openpilot.selfdrive.car.ford.values import CANFD_CAR, CAR, Ecu
+from openpilot.selfdrive.car.interfaces import CarInterfaceBase
+
+TransmissionType = car.CarParams.TransmissionType
+GearShifter = car.CarState.GearShifter
 
 
 class CarInterface(CarInterfaceBase):
   @staticmethod
-  def get_params(candidate, fingerprint=gen_empty_fingerprint(), car_fw=None):
-    ret = CarInterfaceBase.get_std_params(candidate, fingerprint)
+  def _get_params(ret, candidate, fingerprint, car_fw, experimental_long, docs):
     ret.carName = "ford"
-    ret.safetyConfigs = [get_safety_config(car.CarParams.SafetyModel.ford)]
-    ret.dashcamOnly = True
+    ret.dashcamOnly = candidate in {CAR.F_150_MK14}
 
-    ret.wheelbase = 2.85
-    ret.steerRatio = 14.8
-    ret.mass = 3045. * CV.LB_TO_KG + STD_CARGO_KG
-    ret.lateralTuning.pid.kiBP, ret.lateralTuning.pid.kpBP = [[0.], [0.]]
-    ret.lateralTuning.pid.kpV, ret.lateralTuning.pid.kiV = [[0.01], [0.005]]     # TODO: tune this
-    ret.lateralTuning.pid.kf = 1. / MAX_ANGLE   # MAX Steer angle to normalize FF
-    ret.steerActuatorDelay = 0.1  # Default delay, not measured yet
-    ret.steerLimitTimer = 1.0
-    ret.steerRateCost = 1.0
-    ret.centerToFront = ret.wheelbase * 0.44
-    tire_stiffness_factor = 0.5328
-    # TODO: add minSteerSpeed
-    ret.minEnableSpeed = 12. * CV.MPH_TO_MS
-
-    # TODO: get actual value, for now starting with reasonable value for
-    # civic and scaling by mass and wheelbase
-    ret.rotationalInertia = scale_rot_inertia(ret.mass, ret.wheelbase)
-
-    # TODO: start from empirically derived lateral slip stiffness for the civic and scale by
-    # mass and CG position, so all cars will have approximately similar dyn behaviors
-    ret.tireStiffnessFront, ret.tireStiffnessRear = scale_tire_stiffness(ret.mass, ret.wheelbase, ret.centerToFront,
-                                                                         tire_stiffness_factor=tire_stiffness_factor)
-
+    ret.radarUnavailable = True
     ret.steerControlType = car.CarParams.SteerControlType.angle
+    ret.steerActuatorDelay = 0.2
+    ret.steerLimitTimer = 1.0
 
+    CAN = CanBus(fingerprint=fingerprint)
+    cfgs = [get_safety_config(car.CarParams.SafetyModel.ford)]
+    if CAN.main >= 4:
+      cfgs.insert(0, get_safety_config(car.CarParams.SafetyModel.noOutput))
+    ret.safetyConfigs = cfgs
+
+    ret.experimentalLongitudinalAvailable = True
+    if experimental_long:
+      ret.safetyConfigs[-1].safetyParam |= Panda.FLAG_FORD_LONG_CONTROL
+      ret.openpilotLongitudinalControl = True
+
+    if candidate in CANFD_CAR:
+      ret.safetyConfigs[-1].safetyParam |= Panda.FLAG_FORD_CANFD
+
+    if candidate == CAR.BRONCO_SPORT_MK1:
+      ret.wheelbase = 2.67
+      ret.steerRatio = 17.7
+      ret.mass = 1625
+
+    elif candidate == CAR.ESCAPE_MK4:
+      ret.wheelbase = 2.71
+      ret.steerRatio = 16.7
+      ret.mass = 1750
+
+    elif candidate == CAR.EXPLORER_MK6:
+      ret.wheelbase = 3.025
+      ret.steerRatio = 16.8
+      ret.mass = 2050
+
+    elif candidate == CAR.F_150_MK14:
+      # required trim only on SuperCrew
+      ret.wheelbase = 3.69
+      ret.steerRatio = 17.0
+      ret.mass = 2000
+
+    elif candidate == CAR.FOCUS_MK4:
+      ret.wheelbase = 2.7
+      ret.steerRatio = 15.0
+      ret.mass = 1350
+
+    elif candidate == CAR.MAVERICK_MK1:
+      ret.wheelbase = 3.076
+      ret.steerRatio = 17.0
+      ret.mass = 1650
+
+    else:
+      raise ValueError(f"Unsupported car: {candidate}")
+
+    # Auto Transmission: 0x732 ECU or Gear_Shift_by_Wire_FD1
+    found_ecus = [fw.ecu for fw in car_fw]
+    if Ecu.shiftByWire in found_ecus or 0x5A in fingerprint[CAN.main] or docs:
+      ret.transmissionType = TransmissionType.automatic
+    else:
+      ret.transmissionType = TransmissionType.manual
+      ret.minEnableSpeed = 20.0 * CV.MPH_TO_MS
+
+    # BSM: Side_Detect_L_Stat, Side_Detect_R_Stat
+    # TODO: detect bsm in car_fw?
+    ret.enableBsm = 0x3A6 in fingerprint[CAN.main] and 0x3A7 in fingerprint[CAN.main]
+
+    # LCA can steer down to zero
+    ret.minSteerSpeed = 0.
+
+    ret.autoResumeSng = ret.minEnableSpeed == -1.
+    ret.centerToFront = ret.wheelbase * 0.44
     return ret
 
-  # returns a car.CarState
-  def update(self, c, can_strings):
-    # ******************* do can recv *******************
-    self.cp.update_strings(can_strings)
+  def _update(self, c):
+    ret = self.CS.update(self.cp, self.cp_cam)
 
-    ret = self.CS.update(self.cp)
-
-    ret.canValid = self.cp.can_valid
-
-    # events
-    events = self.create_common_events(ret)
-
-    if self.CS.lkas_state not in (2, 3) and ret.vEgo > 13. * CV.MPH_TO_MS and ret.cruiseState.enabled:
-      events.add(car.CarEvent.EventName.steerTempUnavailable)
+    events = self.create_common_events(ret, extra_gears=[GearShifter.manumatic])
+    if not self.CS.vehicle_sensors_valid:
+      events.add(car.CarEvent.EventName.vehicleSensorsInvalid)
+    if self.CS.hybrid_platform:
+      events.add(car.CarEvent.EventName.startupNoControl)
 
     ret.events = events.to_msg()
 
-    self.CS.out = ret.as_reader()
-    return self.CS.out
-
-  # pass in a car.CarControl
-  # to be called @ 100hz
-  def apply(self, c):
-
-    ret = self.CC.update(c.enabled, self.CS, self.frame, c.actuators,
-                         c.hudControl.visualAlert, c.cruiseControl.cancel)
-
-    self.frame += 1
     return ret
+
+  def apply(self, c, now_nanos):
+    return self.CC.update(c, self.CS, now_nanos)
