@@ -1,17 +1,14 @@
-// hard-forked from https://github.com/commaai/openpilot/tree/05b37552f3a38f914af41f44ccc7c633ad152a15/selfdrive/common/params.h
 #pragma once
 
 #include <map>
 #include <string>
-
-#include "common/util.h"
-#include <common/lmdb++.h>
+#include <vector>
 
 enum ParamKeyType {
   PERSISTENT = 0x02,
   CLEAR_ON_MANAGER_START = 0x04,
-  CLEAR_ON_ONROAD_TRANSITION = 0x08,
-  CLEAR_ON_OFFROAD_TRANSITION = 0x10,
+  CLEAR_ON_IGNITION_ON = 0x08,
+  CLEAR_ON_IGNITION_OFF = 0x10,
   DONT_LOG = 0x20,
   ALL = 0xFFFFFFFF
 };
@@ -19,10 +16,11 @@ enum ParamKeyType {
 class Params {
 public:
   Params(const std::string &path = {});
+  std::vector<std::string> allKeys() const;
   bool checkKey(const std::string &key);
   ParamKeyType getKeyType(const std::string &key);
   inline std::string getParamPath(const std::string &key = {}) {
-    return util::getenv("HOME", "/home") + "/.flowdrive" + "/params";
+    return params_path + prefix + (key.empty() ? "" : "/" + key);
   }
 
   // Delete a value
@@ -37,11 +35,15 @@ public:
   std::map<std::string, std::string> readAll();
 
   // helpers for writing values
-  int put(const std::string &key, const std::string &val);
+  int put(const char *key, const char *val, size_t value_size);
+  inline int put(const std::string &key, const std::string &val) {
+    return put(key.c_str(), val.data(), val.size());
+  }
   inline int putBool(const std::string &key, bool val) {
-    return put(key.c_str(), val ? "1" : "0");
+    return put(key.c_str(), val ? "1" : "0", 1);
   }
 
 private:
-  static lmdb::env env;
+  std::string params_path;
+  std::string prefix;
 };

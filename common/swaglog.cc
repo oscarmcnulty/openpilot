@@ -5,14 +5,13 @@
 #include "common/swaglog.h"
 
 #include <cassert>
-#include <cstdarg>
 #include <cstring>
 #include <limits>
 #include <mutex>
 #include <string>
 
 #include <zmq.h>
-#include "third_party/json11/json11.hpp"
+#include "json11.hpp"
 
 #include "common/util.h"
 #include "common/version.h"
@@ -20,7 +19,7 @@
 
 class SwaglogState : public LogState {
  public:
-  SwaglogState() : LogState(Path::swaglog_ipc().c_str()) {}
+  SwaglogState() : LogState("ipc:///tmp/logmessage") {}
 
   json11::Json::object ctx_j;
 
@@ -64,7 +63,8 @@ static void log(int levelnum, const char* filename, int lineno, const char* func
   if (levelnum >= s.print_level) {
     printf("%s: %s\n", filename, msg);
   }
-  zmq_send(s.sock, log_s.data(), log_s.length(), ZMQ_NOBLOCK);
+  char levelnum_c = levelnum;
+  zmq_send(s.sock, (levelnum_c + log_s).c_str(), log_s.length() + 1, ZMQ_NOBLOCK);
 }
 
 static void cloudlog_common(int levelnum, const char* filename, int lineno, const char* func,
@@ -86,11 +86,8 @@ static void cloudlog_common(int levelnum, const char* filename, int lineno, cons
     log_j["msg"] = msg_j;
   }
 
-  std::string log_s;
-  log_s += (char)levelnum;
-  ((json11::Json)log_j).dump(log_s);
+  std::string log_s = ((json11::Json)log_j).dump();
   log(levelnum, filename, lineno, func, msg_buf, log_s);
-
   free(msg_buf);
 }
 
