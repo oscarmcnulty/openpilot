@@ -22,7 +22,7 @@ p.put_bool('DisengageOnAccelerator', True)
 p.put_bool('IsMetric', False)
 p.put_bool('IsLdwEnabled', False)
 p.put_bool('Passive', False)
-p.put_bool('FlowpilotEnabledToggle', True)
+p.put_bool('OpenpilotEnabledToggle', True)
 p.put_bool('WideCameraOnly', True)
 
 print("done")

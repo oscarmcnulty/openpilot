@@ -34,8 +34,9 @@ if pgrep -x "flowinit" > /dev/null
         exit
     else
         # start a tmux pane
-        tmux new-session -d -s "flowpilot" "scons && flowinit"
-        tmux attach -t flowpilot
+        scons && flowinit
+        #tmux new-session -d -s "flowpilot" "scons && flowinit"
+        #tmux attach -t flowpilot
 fi
 
 while true; do sleep 1; done

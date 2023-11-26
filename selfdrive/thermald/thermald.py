@@ -17,7 +17,7 @@ from common.realtime import DT_TRML, sec_since_boot
 from common.system import is_android, is_android_rooted
 from selfdrive.controls.lib.alertmanager import set_offroad_alert
 from system.hardware import HARDWARE
-from selfdrive.loggerd.config import get_available_percent
+from system.loggerd.config import get_available_percent
 from selfdrive.statsd import statlog
 from selfdrive.swaglog import cloudlog
 

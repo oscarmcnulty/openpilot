@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import logging
 import time
 from typing import List
@@ -81,15 +82,12 @@ def main():
                         ("CompletedTrainingVersion", "0"),
                         ("DisengageOnAccelerator", "1"),
                         ("HasAcceptedTerms", "0"),
-                        ("FlowpilotEnabledToggle", "0"),
+                        ("OpenpilotEnabledToggle", "0"),
                         ("WideCameraOnly", "1"),
                          ]
 
         if params.get_bool("RecordFrontLock"):
             params.put_bool("RecordFront", True)
-
-        if not params.get_bool("DisableRadar_Allow"):
-            params.delete("DisableRadar")
         
         # android specififc
         if system.is_android():
@@ -197,6 +195,9 @@ def main():
             print(traceback.format_exc())
         finally:
             cloudlog.info("cleaning up..")
-            params.put_bool("FlowinitReady", False)
+            #params.put_bool("FlowinitReady", False)
             manager_cleanup()
+
+if __name__ == "__main__":
+  main()
             

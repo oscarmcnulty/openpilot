@@ -246,11 +246,11 @@ public class SettingsScreen extends ScreenAdapter {
 
         //TODO: Get better toggle buttons.
         FPToggle = new TextButton("  ", appContext.skin, "toggle");
-        FPToggle.setChecked(params.exists("FlowpilotEnabledToggle") && params.getBool("FlowpilotEnabledToggle"));
+        FPToggle.setChecked(params.exists("OpenpilotEnabledToggle") && params.getBool("OpenpilotEnabledToggle"));
         FPToggle.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeListener.ChangeEvent event, Actor actor) {
-                params.putBool("FlowpilotEnabledToggle", FPToggle.isChecked());
+                params.putBool("OpenpilotEnabledToggle", FPToggle.isChecked());
             }
         });
 
