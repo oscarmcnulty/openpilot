@@ -151,16 +151,16 @@ def main():
 
                 running_daemons = []
                 for service in managed_processes.values():
-                    if service.phandler is None:
+                    if service.proc is None:
                         continue
-                    is_running = service.is_alive()
+                    is_running = service.get_process_state_msg().running
                     if is_running:
                         running_daemons.append("%s%s\u001b[0m" % ("\u001b[32m", service.name))
                     else:
                         running_daemons.append("%s%s\u001b[0m" % ("\u001b[31m", service.name))
-                        if service.communicated:
-                            continue
-                        stderr = service.communicate()
+                        #if service.communicated:
+                        #    continue
+                        _, stderr = service.proc.communicate()
                         if stderr is not None:
                             stderr = stderr.decode("utf-8")
                             print("%s%s\u001b[0m" % ("\u001b[31m", f"[{service.name}] " + stderr))
