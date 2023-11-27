@@ -1,13 +1,13 @@
 from collections import defaultdict, namedtuple
-from dataclasses import dataclass
-from enum import Enum
+from dataclasses import dataclass, field
+from enum import Enum, StrEnum
 from typing import Dict, List, Union
 
 from cereal import car
 from panda.python import uds
 from opendbc.can.can_define import CANDefine
 from selfdrive.car import dbc_dict
-from selfdrive.car.docs_definitions import CarFootnote, CarInfo, Column, Harness
+from selfdrive.car.docs_definitions import CarFootnote, CarHarness, CarInfo, CarParts, Column, Device
 from selfdrive.car.fw_query_definitions import FwQueryConfig, Request, p16
 
 Ecu = car.CarParams.Ecu
