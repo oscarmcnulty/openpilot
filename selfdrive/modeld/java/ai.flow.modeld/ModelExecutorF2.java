@@ -3,6 +3,7 @@ package ai.flow.modeld;
 import ai.flow.common.ParamsInterface;
 import ai.flow.common.transformations.Camera;
 import ai.flow.definitions.Definitions;
+import ai.flow.definitions.Custom;
 import ai.flow.modeld.messages.MsgCameraOdometery;
 import ai.flow.modeld.messages.MsgModelDataV2;
 import messaging.ZMQPubHandler;
@@ -66,7 +67,7 @@ public class ModelExecutorF2 extends ModelExecutor implements Runnable{
     public int frameDrops = 0; // per iteration
     public ModelRunner modelRunner;
     Definitions.FrameData.Reader frameData;
-    Definitions.FrameBuffer.Reader msgFrameBuffer;
+    Custom.FrameBuffer.Reader msgFrameBuffer;
     public MsgCameraOdometery msgCameraOdometery = new MsgCameraOdometery();
     public MsgModelDataV2 msgModelDataV2 = new MsgModelDataV2();
     ByteBuffer imgBuffer;
@@ -124,12 +125,12 @@ public class ModelExecutorF2 extends ModelExecutor implements Runnable{
         INDArray wrapMatrix = Preprocess.getWrapMatrix(augmentRot, fcam_intrinsics, fcam_intrinsics, false, false);
 
         updateCameraState();
-        updateCameraMatrix(frameData.getIntrinsics());
+        updateCameraMatrix(frameData.getTransform());
         desireNDArr.put(0, 0, 1);
 
         // TODO:Clean this shit.
         ImagePrepare imagePrepare;
-        boolean rgb = msgFrameBuffer.getEncoding() == Definitions.FrameBuffer.Encoding.RGB;
+        boolean rgb = msgFrameBuffer.getEncoding() == Custom.FrameBuffer.Encoding.RGB;
         imagePrepare = new ImagePrepareCPU(FULL_FRAME_SIZE[0], FULL_FRAME_SIZE[1], rgb, msgFrameBuffer.getYWidth(), msgFrameBuffer.getYHeight(),
                 msgFrameBuffer.getYPixelStride(), msgFrameBuffer.getUvWidth(), msgFrameBuffer.getUvHeight(), msgFrameBuffer.getUvPixelStride(),
                 msgFrameBuffer.getUOffset(), msgFrameBuffer.getVOffset(), msgFrameBuffer.getStride());

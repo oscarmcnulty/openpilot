@@ -21,6 +21,6 @@ public class MsgFrameData extends MessageBase {
         event = messageBuilder.initRoot(Definitions.Event.factory);
         if (cameraType == Camera.CAMERA_TYPE_ROAD)
             frameData = event.initRoadCameraState();
-        intrinsics = frameData.initIntrinsics(9);
+        intrinsics = frameData.initTransform(9);
     }
 }

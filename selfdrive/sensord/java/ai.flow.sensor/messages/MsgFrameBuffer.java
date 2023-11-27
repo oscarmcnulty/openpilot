@@ -3,6 +3,7 @@ package ai.flow.sensor.messages;
 import ai.flow.common.transformations.Camera;
 import ai.flow.definitions.Definitions;
 import ai.flow.definitions.MessageBase;
+import ai.flow.definitions.Custom;
 
 import java.nio.ByteBuffer;
 
@@ -11,7 +12,7 @@ import static ai.flow.common.BufferUtils.bufferFromAddress;
 
 public class MsgFrameBuffer extends MessageBase {
 
-    public Definitions.FrameBuffer.Builder frameBuffer;
+    public Custom.FrameBuffer.Builder frameBuffer;
 
     public MsgFrameBuffer(int imgSize, int cameraType) {
         super();
@@ -31,7 +32,7 @@ public class MsgFrameBuffer extends MessageBase {
         }
     }
 
-    public static ByteBuffer updateImageBuffer(Definitions.FrameBuffer.Reader msgFrameBuffer, ByteBuffer imgBuffer){
+    public static ByteBuffer updateImageBuffer(Custom.FrameBuffer.Reader msgFrameBuffer, ByteBuffer imgBuffer){
         if (imgBuffer == null){
             if (msgFrameBuffer.getImageAddress() != 0) {
                 imgBuffer = bufferFromAddress(msgFrameBuffer.getImageAddress(), Camera.frameSize[0]*Camera.frameSize[1]*3/2);

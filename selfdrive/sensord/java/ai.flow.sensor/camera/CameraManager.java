@@ -1,6 +1,7 @@
 package ai.flow.sensor.camera;
 
 import ai.flow.common.ParamsInterface;
+import ai.flow.definitions.Custom;
 import ai.flow.definitions.Definitions;
 import ai.flow.modeld.messages.MsgFrameData;
 import ai.flow.sensor.SensorInterface;
@@ -86,7 +87,7 @@ public class CameraManager extends SensorInterface implements Runnable {
         framePadded = new Mat();
         frameProcessed = new Mat(defaultFrameHeight, defaultFrameWidth, CvType.CV_8UC3);
 
-        msgFrameBuffer.frameBuffer.setEncoding(Definitions.FrameBuffer.Encoding.RGB);
+        msgFrameBuffer.frameBuffer.setEncoding(Custom.FrameBuffer.Encoding.RGB);
         msgFrameBuffer.setImageBufferAddress(frameProcessed.dataAddr());
 
         msgFrameBuffer.frameBuffer.setFrameHeight(frameHeight);

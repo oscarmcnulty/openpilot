@@ -7,6 +7,7 @@ import ai.flow.common.Path;
 import ai.flow.common.transformations.Camera;
 import ai.flow.definitions.CarDefinitions.CarControl.HUDControl.AudibleAlert;
 import ai.flow.definitions.Definitions;
+import ai.flow.definitions.Custom;
 import ai.flow.modeld.CommonModelF2;
 import ai.flow.modeld.ParsedOutputs;
 import ai.flow.modeld.Preprocess;
@@ -121,7 +122,7 @@ public class OnRoadScreen extends ScreenAdapter {
     boolean laneLess;
     ByteBuffer imgBuffer;
     NV12Renderer nv12Renderer;
-    Definitions.FrameBuffer.Reader msgframeBuffer;
+    Custom.FrameBuffer.Reader msgframeBuffer;
     Definitions.FrameData.Reader msgframeData;
     Animation<TextureRegion> animationNight, animationNoon, animationSunset;
     Map<String, String> offroadNotifications = new HashMap<String, String>() {{
@@ -425,9 +426,9 @@ public class OnRoadScreen extends ScreenAdapter {
     // TODO: move to common
     public boolean isIntrinsicsValid(Definitions.FrameData.Reader frameData){
         // PS: find better ways to check validity.
-        if (!frameData.hasIntrinsics())
+        if (!frameData.hasTransform())
             return false;
-        PrimitiveList.Float.Reader intrinsics = frameData.getIntrinsics();
+        PrimitiveList.Float.Reader intrinsics = frameData.getTransform();
         return intrinsics.get(0)!=0 & intrinsics.get(2)!=0 & intrinsics.get(4)!=0 & intrinsics.get(5)!=0 & intrinsics.get(8)!=0;
     }
 
@@ -436,7 +437,7 @@ public class OnRoadScreen extends ScreenAdapter {
             System.out.println("got invalid intrinsics from camera manager");
             return;
         }
-        PrimitiveList.Float.Reader intrinsics = frameData.getIntrinsics();
+        PrimitiveList.Float.Reader intrinsics = frameData.getTransform();
         for (int i=0; i<3; i++){
             for (int j=0; j<3; j++){
                 K.put(i, j, intrinsics.get(i*3 + j));
@@ -645,7 +646,7 @@ public class OnRoadScreen extends ScreenAdapter {
             }
 
             if (msgframeBuffer != null)
-                renderImage(msgframeBuffer.getEncoding() == Definitions.FrameBuffer.Encoding.RGB);
+                renderImage(msgframeBuffer.getEncoding() == Custom.FrameBuffer.Encoding.RGB);
 
             if (modelAlive)
                 drawModelOutputs();

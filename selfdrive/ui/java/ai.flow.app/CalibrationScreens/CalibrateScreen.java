@@ -7,6 +7,7 @@ import ai.flow.common.ParamsInterface;
 import ai.flow.common.transformations.Camera;
 import ai.flow.common.transformations.YUV2RGB;
 import ai.flow.definitions.Definitions;
+import ai.flow.definitions.Custom;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.GL20;
@@ -63,7 +64,7 @@ public class CalibrateScreen extends ScreenAdapter {
     // calibrator object
     CameraCalibratorIntrinsic calibrator;
     ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(2);
-    Definitions.FrameBuffer.Reader msgFrameBuffer;
+    Custom.FrameBuffer.Reader msgFrameBuffer;
     Definitions.FrameData.Reader msgFrameData;
     ByteBuffer imgBuffer;
     YUV2RGB yuv2RGB = null;
@@ -134,7 +135,7 @@ public class CalibrateScreen extends ScreenAdapter {
         currFrameID = msgFrameData.getFrameId();
         imgBuffer = updateImageBuffer(msgFrameBuffer, imgBuffer);
 
-        boolean rgb = msgFrameBuffer.getEncoding() == Definitions.FrameBuffer.Encoding.RGB;
+        boolean rgb = msgFrameBuffer.getEncoding() == Custom.FrameBuffer.Encoding.RGB;
         if (rgb){
             pixelMap.setPixels(imgBuffer);
             texture.draw(pixelMap, 0, 0);
