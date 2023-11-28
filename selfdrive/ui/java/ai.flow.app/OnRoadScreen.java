@@ -519,7 +519,7 @@ public class OnRoadScreen extends ScreenAdapter {
 
     public void drawAlert(Definitions.ControlsState.Reader controlState) {
         Definitions.ControlsState.AlertStatus alertStatus = null;
-        Definitions.ControlsState.FlowpilotState state = null;
+        Definitions.ControlsState.OpenpilotState state = null;
         if (controlState != null) {
             alertText1.setText(controlState.getAlertText1().toString());
             alertText2.setText(controlState.getAlertText2().toString());
@@ -539,7 +539,7 @@ public class OnRoadScreen extends ScreenAdapter {
         else if (alertStatus == Definitions.ControlsState.AlertStatus.CRITICAL){
             status = UIStatus.STATUS_ALERT;
         }
-        else if (state == Definitions.ControlsState.FlowpilotState.PRE_ENABLED || state == Definitions.ControlsState.FlowpilotState.OVERRIDING){
+        else if (state == Definitions.ControlsState.OpenpilotState.PRE_ENABLED || state == Definitions.ControlsState.OpenpilotState.OVERRIDING){
             status = UIStatus.STATUS_OVERRIDE;
         }
         else{

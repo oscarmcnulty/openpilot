@@ -1,3 +1,15 @@
+# Dev commands
+
+```sh
+# Install to phone over wifi 
+adb connect OnePlus-7T.lan
+adb install -r android/build/outputs/apk/debug/android-debug.apk
+
+# Open termux shell through adb
+adb shell
+run-as com.termux files/usr/bin/bash -lic 'export PATH=/data/data/com.termux/files/usr/bin:$PATH; export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so; bash -i'
+```
+
 <img src="https://i.ibb.co/LZtKvfB/Screenshot-from-2022-09-15-22-15-14.png" alt="table" width="1270" />
 
 # What is Flowpilot?

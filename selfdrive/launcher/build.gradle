@@ -22,7 +22,8 @@ dependencies {
     implementation project(path: ':modeld')
     implementation 'org.slf4j:slf4j-api:1.7.30'
     implementation 'org.slf4j:slf4j-simple:1.7.30'
-    implementation files("$rootProject.projectDir/libs/zmq.jar")
+    implementation group: 'org.zeromq', name: 'jzmq', version: '3.1.0'
+    
     implementation project(":messaging")
     implementation project(path: ':common')
 }

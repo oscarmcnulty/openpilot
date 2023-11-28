@@ -18,7 +18,7 @@ sourceSets {
 }
 
 dependencies {
-    implementation files("$rootProject.projectDir/libs/opencv-nolibs-4.5.1-2.jar")
+    implementation group: 'org.openpnp', name: 'opencv', version: '4.5.1-2'
     implementation 'org.capnproto:runtime:0.1.13'
     implementation project(":messaging")
     implementation project(":common")

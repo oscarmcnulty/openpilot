@@ -4,6 +4,7 @@ import ai.flow.common.ParamsInterface;
 import ai.flow.common.Path;
 import ai.flow.common.transformations.Camera;
 import ai.flow.definitions.Definitions;
+import ai.flow.definitions.Custom;
 import ai.flow.modeld.messages.MsgFrameData;
 import ai.flow.sensor.SensorInterface;
 import ai.flow.sensor.messages.MsgFrameBuffer;
@@ -87,7 +88,7 @@ public class CameraManager extends SensorInterface {
 
         msgFrameBuffer = new MsgFrameBuffer(W * H * 3/2, CAMERA_TYPE_ROAD);
         yuvBuffer = msgFrameBuffer.frameBuffer.getImage().asByteBuffer();
-        msgFrameBuffer.frameBuffer.setEncoding(Definitions.FrameBuffer.Encoding.YUV);
+        msgFrameBuffer.frameBuffer.setEncoding(Custom.FrameBuffer.Encoding.YUV);
         msgFrameBuffer.frameBuffer.setFrameHeight(H);
         msgFrameBuffer.frameBuffer.setFrameWidth(W);
 
