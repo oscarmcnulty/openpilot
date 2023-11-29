@@ -5,9 +5,21 @@
 adb connect OnePlus-7T.lan
 adb install -r android/build/outputs/apk/debug/android-debug.apk
 
+ssh u0_199@OnePlus-7T.lan -p 8022
+
+# Build and install debug verions of apk
+./gradlew android:installDebug 
+adb shell am start -n ai.flow.android/ai.flow.android.AndroidLauncher
+
+# Open app
+adb shell am start -n ai.flow.android/ai.flow.android.AndroidLauncher
+
+# debug app 
+adb shell 
+am start -D --user 10 -a android.intent.action.MAIN -n ai.flow.android/ai.flow.android.AndroidLauncher
+
 # Open termux shell through adb
-adb shell
-run-as com.termux files/usr/bin/bash -lic 'export PATH=/data/data/com.termux/files/usr/bin:$PATH; export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so; bash -i'
+adb shell run-as com.termux files/usr/bin/bash -lic 'export PATH=/data/data/com.termux/files/usr/bin:$PATH; export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so; bash -i'
 ```
 
 <img src="https://i.ibb.co/LZtKvfB/Screenshot-from-2022-09-15-22-15-14.png" alt="table" width="1270" />

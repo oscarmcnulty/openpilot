@@ -77,7 +77,7 @@ if platform.system() == "Darwin":
 elif arch == "aarch64" and AGNOS:
   arch = "larch64"
 assert arch in ["larch64", "aarch64", "x86_64", "Darwin"]
-arch = "aarch64"
+
 lenv = {
   "PATH": os.environ['PATH'] + ":" + Dir(f"#libs/capnpc-java/{arch}/bin").abspath,
   "LD_LIBRARY_PATH": [Dir(f"#third_party/acados/{arch}/lib").abspath],
