@@ -1,29 +1,14 @@
 .gradle
-backup
-build/
-run.sh
-__pycache__
-.cxx/
-*.log
-.classpath
-.settings
-.vscode
-.project
-data
-*.egg-info
-*/gradlew
-*/gradle-wrapper
-*/gradle
-c_generated_code/
-acados_ocp_lat.json
-acados_ocp_long.json
-Definitions.java
-CarDefinitions.java
-.flowpilot_db
-android/release
+.dep_update
+desktop/bin 
 libs/capnpc-java/capnproto-java/
 !libs/capnpc-java/*
-bin
+selfdrive/modeld/bin/
+
+venv/
+.venv/
+.ci_cache
+.env
 .clang-format
 .DS_Store
 .tags
@@ -36,8 +21,6 @@ bin
 model2.png
 a.out
 .hypothesis
-.dep_update
-.pip_update
 
 *.dylib
 *.DSYM
@@ -59,74 +42,57 @@ a.out
 *.pyxbldc
 *.vcd
 *.qm
+config.json
+clcache
+compile_commands.json
+compare_runtime*.html
 
-# binaries
+persist
+board/obj/
 selfdrive/boardd/boardd
-libs/capnpc-java/capnproto-java/
+selfdrive/logcatd/logcatd
+selfdrive/mapd/default_speeds_by_region.json
+system/proclogd/proclogd
+selfdrive/ui/_ui
+selfdrive/ui/translations/alerts_generated.h
+selfdrive/ui/translations/tmp
+selfdrive/test/longitudinal_maneuvers/out
+selfdrive/car/tests/cars_dump
+system/camerad/camerad
+system/camerad/test/ae_gray_test
+selfdrive/modeld/_modeld
+selfdrive/modeld/_navmodeld
+selfdrive/modeld/_dmonitoringmodeld
+/src/
 
-# Ignore Gradle GUI config
-gradle-app.setting
+one
+notebooks
+xx
+yy
+hyperthneed
+panda_jungle
+provisioning
 
-# Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
-!gradle-wrapper.jar
+.coverage*
+coverage.xml
+htmlcov
+pandaextra
 
-# Cache of project
-.gradletasknamecache
+.mypy_cache/
+flycheck_*
 
-## Android:
-android/gen/
-local.properties
-com_crashlytics_export_strings.xml
+cppcheck_report.txt
+comma*.sh
 
-## IntelliJ, Android Studio:
-.idea
-*.ipr
-*.iws
-out/
+selfdrive/modeld/thneed/compile
+selfdrive/modeld/models/*.thneed
+selfdrive/modeld/models/*.pkl
 
-## OS Specific
-.DS_Store
+*.bz2
 
-######## Python
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.py[cod]
-*$py.class
-
-
-# Distribution / packaging
-.Python
 build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
 
 !**/.gitkeep
+
+poetry.toml
+Pipfile
