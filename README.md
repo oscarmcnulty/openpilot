@@ -5,7 +5,9 @@
 adb connect OnePlus-7T.lan
 adb install -r android/build/outputs/apk/debug/android-debug.apk
 
+# Open termux remotely
 ssh u0_199@OnePlus-7T.lan -p 8022
+sudo login-flowpilot-root
 
 # Build and install debug verions of apk
 ./gradlew android:installDebug 
@@ -20,6 +22,12 @@ am start -D --user 10 -a android.intent.action.MAIN -n ai.flow.android/ai.flow.a
 
 # Open termux shell through adb
 adb shell run-as com.termux files/usr/bin/bash -lic 'export PATH=/data/data/com.termux/files/usr/bin:$PATH; export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so; bash -i'
+
+# things missing in setup scripts
+apt install qt5-default
+apt install qttools5-dev-tools
+apt install ocl-icd-opencl-dev
+apt install git-lfs # need to add custom repo
 ```
 
 <img src="https://i.ibb.co/LZtKvfB/Screenshot-from-2022-09-15-22-15-14.png" alt="table" width="1270" />

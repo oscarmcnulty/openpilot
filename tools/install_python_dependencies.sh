@@ -43,11 +43,12 @@ export MAKEFLAGS="-j$(nproc)"
 
 PYENV_PYTHON_VERSION=$(cat $ROOT/.python-version)
 if ! pyenv prefix ${PYENV_PYTHON_VERSION} &> /dev/null; then
-  # no pyenv update on mac
-  if [ "$(uname)" == "Linux" ]; then
-    echo "pyenv update ..."
-    pyenv update
-  fi
+  # no pyenv update on mac 
+  # (om): or on termux proot?
+  #if [ "$(uname)" == "Linux" ]; then
+  #  echo "pyenv update ..."
+  #  pyenv update
+  #fi
   echo "python ${PYENV_PYTHON_VERSION} install ..."
   CONFIGURE_OPTS="--enable-shared" pyenv install -f ${PYENV_PYTHON_VERSION}
 fi
