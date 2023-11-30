@@ -73,8 +73,7 @@ def main():
         # Parse the services yaml file
 
         for proc in psutil.process_iter():
-            if proc.name() in managed_processes.keys() and \
-                not managed_processes[proc.name()].unkillable:
+            if proc.name() in managed_processes.keys():
                 cloudlog.warning(f"{proc.name()} already alive, restarting..")
                 proc.kill()
 

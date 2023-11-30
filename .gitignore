@@ -1,8 +1,8 @@
 .gradle
 .dep_update
 desktop/bin 
-libs/capnpc-java/capnproto-java/
 !libs/capnpc-java/*
+libs/capnpc-java/capnproto-java
 selfdrive/modeld/bin/
 
 venv/
