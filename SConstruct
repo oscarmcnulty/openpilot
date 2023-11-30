@@ -278,9 +278,6 @@ envCython["CCFLAGS"].remove("-Werror")
 envCython["LIBS"] = []
 if arch == "Darwin":
   envCython["LINKFLAGS"] = ["-bundle", "-undefined", "dynamic_lookup"] + darwin_rpath_link_flags
-elif arch == "aarch64":
-  envCython["LINKFLAGS"] = ["-shared"]
-  envCython["LIBS"] = [os.path.basename(py_include)]
 else:
   envCython["LINKFLAGS"] = ["-pthread", "-shared"]
 
