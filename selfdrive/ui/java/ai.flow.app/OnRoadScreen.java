@@ -313,10 +313,11 @@ public class OnRoadScreen extends ScreenAdapter {
         velocityUnitLabel = new Label("", appContext.skin, "default-font", "white");
         isMetric = params.existsAndCompare("IsMetric", true);
 
-        if (params.exists("EndToEndToggle"))
-            laneLess = params.getBool("EndToEndToggle");
-        else
-            laneLess = false;
+        //if (params.exists("EndToEndToggle"))
+        //    laneLess = params.getBool("EndToEndToggle");
+        //else
+        //    laneLess = false;
+        laneless = true;
 
         alertText1 = new Label("Flowpilot Unavailable", appContext.skin, "default-font-bold-med", "white");
         alertText2 = new Label("Waiting for controls to start", appContext.skin, "default-font", "white");
