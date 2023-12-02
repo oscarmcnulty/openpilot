@@ -407,32 +407,36 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Device temperature too high. System won&apos;t start.</source>
+        <source>Device temperature too high. System cooling down before starting. Current internal component temperature: %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Immediately connect to the internet to check for updates. If you do not connect to the internet, flowpilot won&apos;t engage in </source>
+        <source>Immediately connect to the internet to check for updates. If you do not connect to the internet, openpilot won&apos;t engage in %1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Connect to internet to check for updates. flowpilot won&apos;t automatically start until it connects to internet to check for updates.</source>
+        <source>Connect to internet to check for updates. openpilot won&apos;t automatically start until it connects to internet to check for updates.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <source>Unable to download updates
-</source>
+%1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Device failed to register. It will not connect to or upload to flowdrive.ai servers, and receives no support from flowdrive.ai. If this is an official device, contact support@flowdrive.ai.</source>
+        <source>Device failed to register. It will not connect to or upload to comma.ai servers, and receives no support from comma.ai. If this is an official device, visit https://comma.ai/support.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>flowpilot was unable to identify your car. Your car is either unsupported or its ECUs are not recognized. Please submit a pull request to add the firmware versions to the proper vehicle. Need help? Join discord.flowdrive.ai.</source>
+        <source>openpilot was unable to identify your car. Your car is either unsupported or its ECUs are not recognized. Please submit a pull request to add the firmware versions to the proper vehicle. Need help? Join discord.comma.ai.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>flowpilot was unable to identify your car. Check integrity of cables and ensure all connections are secure, particularly that the comma power is fully inserted in the OBD-II port of the vehicle. Need help? Join discord.flowdrive.ai.</source>
+        <source>openpilot was unable to identify your car. Check integrity of cables and ensure all connections are secure, particularly that the comma power is fully inserted in the OBD-II port of the vehicle. Need help? Join discord.comma.ai.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>openpilot detected a change in the device&apos;s mounting position. Ensure the device is fully seated in the mount and the mount is firmly secured to the windshield.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

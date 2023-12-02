@@ -387,20 +387,20 @@
     <name>OffroadAlert</name>
     <message>
         <source>Device temperature too high. System cooling down before starting. Current internal component temperature: %1</source>
-        <translation type="vanished">อุณหภูมิของอุปกรณ์สูงเกินไป ระบบกำลังทำความเย็นก่อนเริ่ม อุณหภูมิของชิ้นส่วนภายในปัจจุบัน: %1</translation>
+        <translation>อุณหภูมิของอุปกรณ์สูงเกินไป ระบบกำลังทำความเย็นก่อนเริ่ม อุณหภูมิของชิ้นส่วนภายในปัจจุบัน: %1</translation>
     </message>
     <message>
         <source>Immediately connect to the internet to check for updates. If you do not connect to the internet, openpilot won&apos;t engage in %1</source>
-        <translation type="vanished">กรุณาเชื่อมต่ออินเตอร์เน็ตเพื่อตรวจสอบอัปเดทเดี๋ยวนี้ ถ้าคุณไม่เชื่อมต่ออินเตอร์เน็ต openpilot จะไม่ทำงานในอีก %1</translation>
+        <translation>กรุณาเชื่อมต่ออินเตอร์เน็ตเพื่อตรวจสอบอัปเดทเดี๋ยวนี้ ถ้าคุณไม่เชื่อมต่ออินเตอร์เน็ต openpilot จะไม่ทำงานในอีก %1</translation>
     </message>
     <message>
         <source>Connect to internet to check for updates. openpilot won&apos;t automatically start until it connects to internet to check for updates.</source>
-        <translation type="vanished">กรุณาเชื่อมต่ออินเตอร์เน็ตเพื่อตรวจสอบอัปเดท openpilot จะไม่เริ่มทำงานอัตโนมัติจนกว่าจะได้เชื่อมต่อกับอินเตอร์เน็ตเพื่อตรวจสอบอัปเดท</translation>
+        <translation>กรุณาเชื่อมต่ออินเตอร์เน็ตเพื่อตรวจสอบอัปเดท openpilot จะไม่เริ่มทำงานอัตโนมัติจนกว่าจะได้เชื่อมต่อกับอินเตอร์เน็ตเพื่อตรวจสอบอัปเดท</translation>
     </message>
     <message>
         <source>Unable to download updates
 %1</source>
-        <translation type="vanished">ไม่สามารถดาวน์โหลดอัพเดทได้
+        <translation>ไม่สามารถดาวน์โหลดอัพเดทได้
 %1</translation>
     </message>
     <message>
@@ -417,7 +417,7 @@
     </message>
     <message>
         <source>Device failed to register. It will not connect to or upload to comma.ai servers, and receives no support from comma.ai. If this is an official device, visit https://comma.ai/support.</source>
-        <translation type="vanished">ไม่สามารถลงทะเบียนอุปกรณ์ได้ อุปกรณ์จะไม่สามารถเชื่อมต่อหรืออัปโหลดไปยังเซิร์ฟเวอร์ของ comma.ai ได้และจะไม่ได้รับการสนับสนุนจาก comma.ai ถ้านี่คืออุปกรณ์อย่างเป็นทางการ กรุณาติดต่อ https://comma.ai/support</translation>
+        <translation>ไม่สามารถลงทะเบียนอุปกรณ์ได้ อุปกรณ์จะไม่สามารถเชื่อมต่อหรืออัปโหลดไปยังเซิร์ฟเวอร์ของ comma.ai ได้และจะไม่ได้รับการสนับสนุนจาก comma.ai ถ้านี่คืออุปกรณ์อย่างเป็นทางการ กรุณาติดต่อ https://comma.ai/support</translation>
     </message>
     <message>
         <source>NVMe drive not mounted.</source>
@@ -429,44 +429,15 @@
     </message>
     <message>
         <source>openpilot was unable to identify your car. Your car is either unsupported or its ECUs are not recognized. Please submit a pull request to add the firmware versions to the proper vehicle. Need help? Join discord.comma.ai.</source>
-        <translation type="vanished">openpilot ไม่สามารถระบุรถยนต์ของคุณได้ ระบบอาจไม่รองรับรถยนต์ของคุณหรือไม่รู้จัก ECU กรุณาส่ง pull request เพื่อเพิ่มรุ่นของเฟิร์มแวร์ให้กับรถยนต์ที่เหมาะสม หากต้องการความช่วยเหลือให้เข้าร่วม discord.comma.ai</translation>
+        <translation>openpilot ไม่สามารถระบุรถยนต์ของคุณได้ ระบบอาจไม่รองรับรถยนต์ของคุณหรือไม่รู้จัก ECU กรุณาส่ง pull request เพื่อเพิ่มรุ่นของเฟิร์มแวร์ให้กับรถยนต์ที่เหมาะสม หากต้องการความช่วยเหลือให้เข้าร่วม discord.comma.ai</translation>
     </message>
     <message>
         <source>openpilot was unable to identify your car. Check integrity of cables and ensure all connections are secure, particularly that the comma power is fully inserted in the OBD-II port of the vehicle. Need help? Join discord.comma.ai.</source>
-        <translation type="vanished">openpilot ไม่สามารถระบุรถยนต์ของคุณได้ กรุณาตรวจสอบสายเคเบิ้ลและจุดเชื่อมต่อทั้งหมดว่าแน่นหนา โดยเฉพาะ comma power ว่าได้ดันเข้าไปยังพอร์ต OBD II ของรถยนต์จนสุด หากต้องการความช่วยเหลือให้เข้าร่วม discord.comma.ai</translation>
+        <translation>openpilot ไม่สามารถระบุรถยนต์ของคุณได้ กรุณาตรวจสอบสายเคเบิ้ลและจุดเชื่อมต่อทั้งหมดว่าแน่นหนา โดยเฉพาะ comma power ว่าได้ดันเข้าไปยังพอร์ต OBD II ของรถยนต์จนสุด หากต้องการความช่วยเหลือให้เข้าร่วม discord.comma.ai</translation>
     </message>
     <message>
         <source>openpilot detected a change in the device&apos;s mounting position. Ensure the device is fully seated in the mount and the mount is firmly secured to the windshield.</source>
-        <translation type="vanished">openpilot ตรวจพบการเปลี่ยนแปลงของตำแหน่งที่ติดตั้ง กรุณาตรวจสอบว่าได้เลื่อนอุปกรณ์เข้ากับจุดติดตั้งจนสุดแล้ว และจุดติดตั้งได้ยึดติดกับกระจกหน้าอย่างแน่นหนา</translation>
-    </message>
-    <message>
-        <source>Device temperature too high. System won&apos;t start.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Immediately connect to the internet to check for updates. If you do not connect to the internet, flowpilot won&apos;t engage in </source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Connect to internet to check for updates. flowpilot won&apos;t automatically start until it connects to internet to check for updates.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Unable to download updates
-</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Device failed to register. It will not connect to or upload to flowdrive.ai servers, and receives no support from flowdrive.ai. If this is an official device, contact support@flowdrive.ai.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>flowpilot was unable to identify your car. Your car is either unsupported or its ECUs are not recognized. Please submit a pull request to add the firmware versions to the proper vehicle. Need help? Join discord.flowdrive.ai.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>flowpilot was unable to identify your car. Check integrity of cables and ensure all connections are secure, particularly that the comma power is fully inserted in the OBD-II port of the vehicle. Need help? Join discord.flowdrive.ai.</source>
-        <translation type="unfinished"></translation>
+        <translation>openpilot ตรวจพบการเปลี่ยนแปลงของตำแหน่งที่ติดตั้ง กรุณาตรวจสอบว่าได้เลื่อนอุปกรณ์เข้ากับจุดติดตั้งจนสุดแล้ว และจุดติดตั้งได้ยึดติดกับกระจกหน้าอย่างแน่นหนา</translation>
     </message>
 </context>
 <context>
