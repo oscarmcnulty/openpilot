@@ -51,16 +51,15 @@ public class CameraManager extends SensorInterface {
     public String frameDataTopic, frameBufferTopic;
     public ZMQPubHandler ph;
     public boolean running = false;
-    public int W = Camera.frameSize[0];
-    public int H = Camera.frameSize[1];
-    public MsgFrameData msgFrameData = new MsgFrameData(CAMERA_TYPE_ROAD);
+    public int W, H;
+    public MsgFrameData msgFrameData;
     public MsgFrameBuffer msgFrameBuffer;
-    public PrimitiveList.Float.Builder K = msgFrameData.intrinsics;
+    public PrimitiveList.Float.Builder K;
     public int frequency;
     public int frameID = 0;
     public boolean recording = false;
     public Context context;
-    public ParamsInterface params = ParamsInterface.getInstance();
+    public ParamsInterface params;
     public Fragment lifeCycleFragment;
     int cameraType;
     CameraControl cameraControl;
@@ -78,6 +77,11 @@ public class CameraManager extends SensorInterface {
             .build();
 
     public CameraManager(Context context, int frequency){
+        this.W = Camera.frameSize[0];
+        this.H = Camera.frameSize[1];
+        this.msgFrameData = new MsgFrameData(CAMERA_TYPE_ROAD);
+        this.K  = msgFrameData.intrinsics;
+        this.params = ParamsInterface.getInstance();
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
         df.setTimeZone(TimeZone.getTimeZone("UTC"));
         this.context = context;
