@@ -110,6 +110,8 @@ std::unordered_map<std::string, uint32_t> keys = {
     {"DisableUpdates", PERSISTENT},
     {"DisengageOnAccelerator", PERSISTENT},
     {"DmModelInitialized", CLEAR_ON_ONROAD_TRANSITION},
+    {"DeviceManufacturer", PERSISTENT}, // only added for flowpilot
+    {"DeviceModel", PERSISTENT}, // only added for flowpilot
     {"DongleId", PERSISTENT},
     {"DoReboot", CLEAR_ON_MANAGER_START},
     {"DoShutdown", CLEAR_ON_MANAGER_START},
