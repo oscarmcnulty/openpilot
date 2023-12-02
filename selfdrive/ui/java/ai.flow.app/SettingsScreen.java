@@ -290,14 +290,14 @@ public class SettingsScreen extends ScreenAdapter {
             }
         });
 
-        lanelessToggle = new TextButton("  ", appContext.skin, "toggle");
-        lanelessToggle.setChecked(params.exists("EndToEndToggle") && params.getBool("EndToEndToggle"));
-        lanelessToggle.addListener(new ChangeListener() {
-            @Override
-            public void changed(ChangeListener.ChangeEvent event, Actor actor) {
-                params.putBool("EndToEndToggle", lanelessToggle.isChecked());
-            }
-        });
+        //lanelessToggle = new TextButton("  ", appContext.skin, "toggle");
+        //lanelessToggle.setChecked(params.exists("EndToEndToggle") && params.getBool("EndToEndToggle"));
+        //lanelessToggle.addListener(new ChangeListener() {
+        //    @Override
+        //    public void changed(ChangeListener.ChangeEvent event, Actor actor) {
+        //        params.putBool("EndToEndToggle", lanelessToggle.isChecked());
+        //    }
+        //});
 
 //        disengageAccToggle = new TextButton("  ", appContext.skin, "toggle");
 //        disengageAccToggle.setChecked(params.exists("DisengageOnAccelerator") && params.getBool("DisengageOnAccelerator"));
