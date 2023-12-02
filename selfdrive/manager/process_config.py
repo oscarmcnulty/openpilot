@@ -70,7 +70,7 @@ procs = [
   NativeProcess("encoderd", "system/loggerd", ["./encoderd"], only_onroad),
   NativeProcess("stream_encoderd", "system/loggerd", ["./encoderd", "--stream"], notcar),
   NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging),
-  NativeProcess("modeld", "selfdrive/modeld", ["./modeld"], only_onroad),
+  #NativeProcess("modeld", "selfdrive/modeld", ["./modeld"], only_onroad),
   #NativeProcess("mapsd", "selfdrive/navd", ["./mapsd"], only_onroad),
   #PythonProcess("navmodeld", "selfdrive.modeld.navmodeld", only_onroad),
   NativeProcess("sensord", "system/sensord", ["./sensord"], only_onroad, enabled=not PC),
@@ -102,7 +102,7 @@ procs = [
   PythonProcess("webjoystick", "tools.bodyteleop.web", notcar),
 
   #flowpilot processes
-  NativeProcess("modelparsed", "selfdrive/modeld", "./modelparsed", only_onroad),
+  NativeProcess("modelparsed", "selfdrive/modeld", ["./modelparsed"], only_onroad),
   PythonProcess("keyvald", "selfdrive.keyvald", always_run)
   #NativeProcess("flowpilot", "", ["./gradlew", "desktop:run"], always_run, enabled=PC),
 ]
