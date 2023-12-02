@@ -16,7 +16,7 @@ export SIMULATION="1"
 export FINGERPRINT="AUDI Q5 1ST GEN"
 
 ## android specific ##
-export USE_SNPE="0" # only works for snapdragon devices.
+export USE_SNPE="1" # only works for snapdragon devices.
 
 
 if ! command -v tmux &> /dev/null
@@ -35,11 +35,9 @@ if pgrep -x "flowinit" > /dev/null
     else
         # start a tmux pane
         source ~/.pyenvrc
-        poetry shell
-        scons
-        ./selfdrive/manager/flowinitd.py
+        tmux new-session -d -s "flowpilot" "poetry shell && scons && ./selfdrive/manager/flowinitd.py"
         #tmux new-session -d -s "flowpilot" "scons && flowinit"
-        #tmux attach -t flowpilot
+        tmux attach -t flowpilot
 fi
 
 while true; do sleep 1; done
