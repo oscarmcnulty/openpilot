@@ -24,10 +24,22 @@ am start -D --user 10 -a android.intent.action.MAIN -n ai.flow.android/ai.flow.a
 adb shell run-as com.termux files/usr/bin/bash -lic 'export PATH=/data/data/com.termux/files/usr/bin:$PATH; export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so; bash -i'
 
 # things missing in setup scripts
+tools/install_ubunut_dependencies.sh
+
 apt install qt5-default
 apt install qttools5-dev-tools
 apt install ocl-icd-opencl-dev
 apt install git-lfs # need to add custom repo
+apt install qml-module-qtquick2 \
+    qtmultimedia5-dev \
+    qtlocation5-dev \
+    qtpositioning5-dev \
+    qttools5-dev-tools \
+    libqt5sql5-sqlite \
+    libqt5svg5-dev \
+    libqt5charts5-dev \
+    libqt5serialbus5-dev  \
+    libqt5x11extras5-dev 
 ```
 
 <img src="https://i.ibb.co/LZtKvfB/Screenshot-from-2022-09-15-22-15-14.png" alt="table" width="1270" />

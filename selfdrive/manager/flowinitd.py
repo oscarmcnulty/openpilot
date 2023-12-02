@@ -7,11 +7,13 @@ import traceback
 import subprocess
 import os
 
+print(os.environ['PYTHONPATH'])
+
 import psutil
 from openpilot.common.params_pyx import Params, ParamKeyType
-from common.basedir import BASEDIR
-from common import system
-from common.path import external_android_storage
+from openpilot.common.basedir import BASEDIR
+from openpilot.common import system
+from openpilot.common.path import external_android_storage
 import cereal.messaging as messaging
 
 from selfdrive.manager.daemon import Daemon, DaemonSig
