@@ -81,11 +81,11 @@ assert arch in ["larch64", "aarch64", "x86_64", "Darwin"]
 lenv = {
   "PATH": os.environ['PATH'] + ":" + Dir(f"#libs/capnpc-java/{arch}/bin").abspath,
   "LD_LIBRARY_PATH": [Dir(f"#third_party/acados/{arch}/lib").abspath],
-  "PYTHONPATH": Dir("#").abspath + ":" + Dir(f"#third_party/acados").abspath,
+  "PYTHONPATH": Dir("#").abspath + ':' + Dir(f"#third_party/acados").abspath,
 
   "ACADOS_SOURCE_DIR": Dir("#third_party/acados").abspath,
   "ACADOS_PYTHON_INTERFACE_PATH": Dir("#third_party/acados/acados_template").abspath,
-  "TERA_PATH": Dir("#").abspath + f"/third_party/acados/{arch}/t_renderer",
+  "TERA_PATH": Dir("#").abspath + f"/third_party/acados/{arch}/t_renderer"
 }
 
 rpath = lenv["LD_LIBRARY_PATH"].copy()
@@ -163,9 +163,17 @@ else:
   ccflags = []
   ldflags = []
 
+# no --as-needed on mac linker
+if arch != "Darwin":
+  ldflags += ["-Wl,--as-needed", "-Wl,--no-undefined"]
+
+# Enable swaglog include in submodules
 cflags += ['-DSWAGLOG="\\"common/swaglog.h\\""']
 cxxflags += ['-DSWAGLOG="\\"common/swaglog.h\\""']
 
+ccflags_option = GetOption('ccflags')
+if ccflags_option:
+  ccflags += ccflags_option.split(' ')
 env = Environment(
   ENV=lenv,
   CCFLAGS=[
@@ -182,7 +190,6 @@ env = Environment(
     "-Wno-c99-designator",
     "-Wno-reorder-init-list",
     "-Wno-error=unused-but-set-variable",
-    "-Wno-c++11-narrowing"
   ] + cflags + ccflags,
 
   CPPPATH=cpppath + [
@@ -213,37 +220,17 @@ env = Environment(
   LIBPATH=libpath + [
     "#cereal",
     "#third_party",
-    "#opendbc/can/",
+    "#opendbc/can",
     "#selfdrive/boardd",
     "#common",
     "#rednose/helpers",
   ],
-
   CYTHONCFILESUFFIX=".cpp",
   COMPILATIONDB_USE_ABSPATH=True,
   REDNOSE_ROOT="#",
   tools=["default", "cython", "compilation_db", "rednose_filter"],
-  toolpath=["#rednose_repo/site_scons/site_tools"]
+  toolpath=["#rednose_repo/site_scons/site_tools"],
 )
-
-"""
-python_path = sysconfig.get_paths()['include']
-cpppath = [
-  "opendbc/can",
-  '/usr/lib/include',
-  python_path
-]
-cflags = []
-cxxflags = []
-
-rpath = lenv["LD_LIBRARY_PATH"].copy()
-rpath += ["/usr/local/lib"]
-
-rpath += [
-    Dir("#cereal").abspath,
-    Dir("#common").abspath
-  ]
-"""
 
 if arch == "Darwin":
   # RPATH is not supported on macOS, instead use the linker flags
@@ -268,7 +255,7 @@ def progress_function(node):
 if os.environ.get('SCONS_PROGRESS'):
   Progress(progress_function, interval=node_interval)
 
-# Cython build enviroment
+# Cython build environment
 py_include = sysconfig.get_paths()['include']
 envCython = env.Clone()
 envCython["CPPPATH"] += [py_include, np.get_include()]
