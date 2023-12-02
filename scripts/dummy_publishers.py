@@ -123,6 +123,7 @@ def fake_driver_monitoring(exit_event: threading.Event):
 
 
 if __name__ == "__main__":
+    print("started main")
     threads = []
     exit_event = threading.Event()
     threads.append(threading.Thread(target=panda_state_function, args=(exit_event,)))
