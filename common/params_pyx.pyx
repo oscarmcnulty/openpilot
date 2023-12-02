@@ -2,6 +2,7 @@
 # cython: language_level = 3
 from libcpp cimport bool
 from libcpp.string cimport string
+from libcpp.vector cimport vector
 import threading
 
 cdef extern from "common/params.h":
@@ -13,15 +14,16 @@ cdef extern from "common/params.h":
     ALL
 
   cdef cppclass c_Params "Params":
-    c_Params(string) nogil
+    c_Params(string) except + nogil
     string get(string, bool) nogil
-    bool getBool(string) nogil
+    bool getBool(string, bool) nogil
     int remove(string) nogil
     int put(string, string) nogil
     int putBool(string, bool) nogil
     bool checkKey(string) nogil
     string getParamPath(string) nogil
     void clearAll(ParamKeyType)
+    vector[string] allKeys()
 
 
 def ensure_bytes(v):
@@ -66,16 +68,16 @@ cdef class Params:
 
     return val if encoding is None else val.decode(encoding)
 
-  def get_bool(self, key):
+  def get_bool(self, key, bool block=False):
     cdef string k = self.check_key(key)
     cdef bool r
     with nogil:
-      r = self.p.getBool(k)
+      r = self.p.getBool(k, block)
     return r
 
   def put(self, key, dat):
     """
-
+    Warning: This function blocks until the param is written to disk!
     In very rare cases this can take over a second, and your code will hang.
     Use the put_nonblocking helper function in time sensitive code, but
     in general try to avoid writing params as much as possible.
@@ -90,7 +92,7 @@ cdef class Params:
     with nogil:
       self.p.putBool(k, val)
 
-  def delete(self, key):
+  def remove(self, key):
     cdef string k = self.check_key(key)
     with nogil:
       self.p.remove(k)
@@ -98,6 +100,9 @@ cdef class Params:
   def get_param_path(self, key=""):
     cdef string key_bytes = ensure_bytes(key)
     return self.p.getParamPath(key_bytes).decode("utf-8")
+
+  def all_keys(self):
+    return self.p.allKeys()
 
 def put_nonblocking(key, val, d=""):
   threading.Thread(target=lambda: Params(d).put(key, val)).start()
