@@ -1,4 +1,3 @@
-# hard-forked from https://github.com/commaai/openpilot/tree/05b37552f3a38f914af41f44ccc7c633ad152a15/selfdrive/controls/lib/alertmanager.py
 import copy
 import os
 import json
@@ -6,9 +5,9 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import List, Dict, Optional
 
-from common.basedir import BASEDIR
-from common.params import Params
-from selfdrive.controls.lib.events import Alert
+from openpilot.common.basedir import BASEDIR
+from openpilot.common.params import Params
+from openpilot.selfdrive.controls.lib.events import Alert
 
 
 with open(os.path.join(BASEDIR, "selfdrive/controls/lib/alerts_offroad.json")) as f:
@@ -17,13 +16,11 @@ with open(os.path.join(BASEDIR, "selfdrive/controls/lib/alerts_offroad.json")) a
 
 def set_offroad_alert(alert: str, show_alert: bool, extra_text: Optional[str] = None) -> None:
   if show_alert:
-    a = OFFROAD_ALERTS[alert]
-    if extra_text is not None:
-      a = copy.copy(OFFROAD_ALERTS[alert])
-      a['text'] += extra_text
-    Params().put(alert, json.dumps(a).encode())
+    a = copy.copy(OFFROAD_ALERTS[alert])
+    a['extra'] = extra_text or ''
+    Params().put(alert, json.dumps(a))
   else:
-    Params().delete(alert)
+    Params().remove(alert)
 
 
 @dataclass
