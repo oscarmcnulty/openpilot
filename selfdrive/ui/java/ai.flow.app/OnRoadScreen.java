@@ -317,7 +317,7 @@ public class OnRoadScreen extends ScreenAdapter {
         //    laneLess = params.getBool("EndToEndToggle");
         //else
         //    laneLess = false;
-        laneless = true;
+        laneLess = true;
 
         alertText1 = new Label("Flowpilot Unavailable", appContext.skin, "default-font-bold-med", "white");
         alertText2 = new Label("Waiting for controls to start", appContext.skin, "default-font", "white");
