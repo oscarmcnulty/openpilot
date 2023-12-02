@@ -34,7 +34,7 @@ if pgrep -x "flowinit" > /dev/null
         exit
     else
         # start a tmux pane
-        echo "pyenv version: $(pyenv version)"
+        source ~/.pyenvrc
         poetry shell
         scons
         ./selfdrive/manager/flowinitd.py
