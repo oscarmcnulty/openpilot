@@ -120,6 +120,7 @@ std::unordered_map<std::string, uint32_t> keys = {
     {"ExperimentalLongitudinalEnabled", PERSISTENT},
     {"ExperimentalMode", PERSISTENT},
     {"ExperimentalModeConfirmed", PERSISTENT},
+    {"F3", PERSISTENT}, // only added for flowpilot
     {"FirmwareQueryDone", CLEAR_ON_MANAGER_START | CLEAR_ON_ONROAD_TRANSITION},
     {"FlowpilotPID", CLEAR_ON_MANAGER_START}, // only added for flowpilot
     {"ForcePowerDown", PERSISTENT},
