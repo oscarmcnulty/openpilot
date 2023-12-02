@@ -102,6 +102,8 @@ procs = [
   PythonProcess("webjoystick", "tools.bodyteleop.web", notcar),
 
   #flowpilot processes
+  NativeProcess("modelparsed", "selfdrive/modeld", "./modelparsed", only_onroad),
+  PythonProcess("keyvald", "selfdrive.keyvald", always_run)
   #NativeProcess("flowpilot", "", ["./gradlew", "desktop:run"], always_run, enabled=PC),
 ]
 
