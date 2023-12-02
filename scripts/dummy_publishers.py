@@ -103,12 +103,16 @@ def peripheral_state_function(exit_event: threading.Event):
     time.sleep(0.5)
 
 def fake_driver_monitoring(exit_event: threading.Event):
-  pm = messaging.PubMaster(['driverState', 'driverMonitoringState'])
+  pm = messaging.PubMaster(['driverStateV2', 'driverMonitoringState'])
   while not exit_event.is_set():
     # dmonitoringmodeld output
-    dat = messaging.new_message('driverState')
-    dat.driverState.faceProb = 1.0
-    pm.send('driverState', dat)
+    dat = messaging.new_message('driverStateV2')
+    dat.driverStateV2.poorVisionProb = 0.0
+    dat.driverStateV2.wheelOnRightProb  = 0.0
+    dat.driverStateV2.leftDriverData.faceProb = 1.0
+    dat.driverStateV2.leftDriverData.readyProb = [1.0]
+    dat.driverStateV2.leftDriverData.occludedProb = 0.0
+    pm.send('driverStateV2', dat)
 
     # dmonitoringd output
     dat = messaging.new_message('driverMonitoringState')
@@ -123,7 +127,6 @@ def fake_driver_monitoring(exit_event: threading.Event):
 
 
 if __name__ == "__main__":
-    print("started main")
     threads = []
     exit_event = threading.Event()
     threads.append(threading.Thread(target=panda_state_function, args=(exit_event,)))
