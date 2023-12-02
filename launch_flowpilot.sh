@@ -34,8 +34,8 @@ if pgrep -x "flowinit" > /dev/null
         exit
     else
         # start a tmux pane
-        scons
         poetry shell
+        scons
         ./selfdrive/manager/flowinitd.py
         #tmux new-session -d -s "flowpilot" "scons && flowinit"
         #tmux attach -t flowpilot
