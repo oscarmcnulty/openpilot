@@ -131,7 +131,7 @@ if __name__ == "__main__":
     exit_event = threading.Event()
     threads.append(threading.Thread(target=panda_state_function, args=(exit_event,)))
     threads.append(threading.Thread(target=peripheral_state_function, args=(exit_event,)))
-    threads.append(threading.Thread(target=fake_driver_monitoring, args=(exit_event,)))
+    #threads.append(threading.Thread(target=fake_driver_monitoring, args=(exit_event,)))
     threads.append(threading.Thread(target=can_function_runner, args=(exit_event,)))
 
     for t in threads:
