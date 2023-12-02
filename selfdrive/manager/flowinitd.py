@@ -7,8 +7,6 @@ import traceback
 import subprocess
 import os
 
-print(os.environ['PYTHONPATH'])
-
 import psutil
 from openpilot.common.params_pyx import Params, ParamKeyType
 from openpilot.common.basedir import BASEDIR
