@@ -8,7 +8,7 @@ import subprocess
 import os
 
 import psutil
-from common.params import Params, ParamKeyType
+from openpilot.common.params_pyx import Params, ParamKeyType
 from common.basedir import BASEDIR
 from common import system
 from common.path import external_android_storage
