@@ -1,7 +1,7 @@
 import os
 
 def flowpilot_root():
-    return os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    return os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), "../"))
 
 def internal(path):
     return os.path.join(flowpilot_root(), path)

@@ -22,7 +22,7 @@ from selfdrive.manager.process_config import managed_processes
 from selfdrive.version import is_dirty, get_commit, get_version, get_origin, get_short_branch, \
                               terms_version, training_version
 from selfdrive.swaglog import cloudlog
-from selfdrive.sentry import sentry_init, capture_error
+import openpilot.selfdrive.sentry as sentry
 
 os.chdir(BASEDIR)
 
@@ -78,9 +78,9 @@ def main():
                 proc.kill()
 
         default_params = [
-                        ("CompletedTrainingVersion", "0"),
+                        ("CompletedTrainingVersion", "1"),
                         ("DisengageOnAccelerator", "1"),
-                        ("HasAcceptedTerms", "0"),
+                        ("HasAcceptedTerms", "1"),
                         ("OpenpilotEnabledToggle", "0"),
                         ("WideCameraOnly", "1"),
                          ]
@@ -105,6 +105,9 @@ def main():
         for k, v in default_params:
             if params.get(k) is None:
                 params.put(k, v)
+        for k, v in [("CompletedTrainingVersion", "1"), ("HasAcceptedTerms", "1")]:
+            params.put(k, v)
+                
         
         # is this dashcam?
         if os.getenv("PASSIVE") is not None:
@@ -124,7 +127,7 @@ def main():
         if not is_dirty():
             os.environ['CLEAN'] = '1'
         
-        sentry_init()
+        sentry.init(sentry.SentryProject.SELFDRIVE)
         
         cloudlog.bind_global(dongle_id="", version=get_version(), dirty=is_dirty(), # TODO
                             device="todo")
@@ -140,7 +143,7 @@ def main():
         pm = messaging.PubMaster(['managerState'])
 
         ensure_running(managed_processes.values(), False, params=params, CP=sm['carParams'], not_run=ignore)
-        
+            
         try:
             while True:
                 sm.update()

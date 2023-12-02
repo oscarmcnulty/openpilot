@@ -1,45 +1,46 @@
+import jwt
 import os
-import logging
-import json
+import requests
+from datetime import datetime, timedelta
+from openpilot.common.basedir import PERSIST
+from openpilot.system.version import get_version
 
-from selfdrive.swaglog import cloudlog
-from common.params import Params
-
-import urllib3
-
-logger = logging.getLogger(__name__)
-
-API_HOST = os.getenv('API_HOST', 'https://staging-api.flowdrive.ai')
+API_HOST = os.getenv('API_HOST', 'https://api.commadotai.com')
 
 class Api():
-  def __init__(self):
-    self.params = Params()
-    self.http_client = urllib3.PoolManager()
+  def __init__(self, dongle_id):
+    self.dongle_id = dongle_id
+    with open(PERSIST+'/comma/id_rsa') as f:
+      self.private_key = f.read()
 
-  def get_credentials(self):
-    # Get auth token
-    self.user_id = self.params.get("UserID").decode()
-    self.token = self.params.get("UserToken").decode()
-    self.dongle_id = self.params.get("DongleId")
-    if self.dongle_id is None:
-      self.dongle_id = b"f"*16
-    self.dongle_id = self.dongle_id.decode()
+  def get(self, *args, **kwargs):
+    return self.request('GET', *args, **kwargs)
 
-    if self.token is None:
-      logger.error(f"Error retrieving auth token")
-    
-    logger.debug(f"Fetched auth token ***")
+  def post(self, *args, **kwargs):
+    return self.request('POST', *args, **kwargs)
 
-    # Get STS
-    r = self.http_client.request(
-        'GET',
-        f"{API_HOST}/auth/sts",
-        headers={'Authorization': f"Bearer {self.token}"}
-    )
-    cloudlog.info("api init statuscode %d", r.status)
+  def request(self, method, endpoint, timeout=None, access_token=None, **params):
+    return api_get(endpoint, method=method, timeout=timeout, access_token=access_token, **params)
 
-    r_data = json.loads(r.data.decode('utf-8'))
-    if r_data["success"] == True:
-      return r_data["message"]
-    else:
-      raise Exception(f"Fetching token from STS endpoint unsuccessful: {r_data['message']}")
+  def get_token(self, expiry_hours=1):
+    now = datetime.utcnow()
+    payload = {
+      'identity': self.dongle_id,
+      'nbf': now,
+      'iat': now,
+      'exp': now + timedelta(hours=expiry_hours)
+    }
+    token = jwt.encode(payload, self.private_key, algorithm='RS256')
+    if isinstance(token, bytes):
+      token = token.decode('utf8')
+    return token
+
+
+def api_get(endpoint, method='GET', timeout=None, access_token=None, **params):
+  headers = {}
+  if access_token is not None:
+    headers['Authorization'] = "JWT " + access_token
+
+  headers['User-Agent'] = "openpilot-" + get_version()
+
+  return requests.request(method, API_HOST + "/" + endpoint, timeout=timeout, headers=headers, params=params)

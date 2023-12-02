@@ -59,14 +59,14 @@ procs = [
   # Athena is interface with athena.comma.ai api
   #DaemonProcess("manage_athenad", "selfdrive.athena.manage_athenad", "AthenadPid"),
 
-  NativeProcess("camerad", "system/camerad", ["./camerad"], driverview),
+  #NativeProcess("camerad", "system/camerad", ["./camerad"], driverview),
   NativeProcess("logcatd", "system/logcatd", ["./logcatd"], only_onroad),
   NativeProcess("proclogd", "system/proclogd", ["./proclogd"], only_onroad),
   PythonProcess("logmessaged", "system.logmessaged", always_run),
-  PythonProcess("micd", "system.micd", iscar),
+  #PythonProcess("micd", "system.micd", iscar),
   PythonProcess("timezoned", "system.timezoned", always_run, enabled=not PC),
 
-  PythonProcess("dmonitoringmodeld", "selfdrive.modeld.dmonitoringmodeld", driverview, enabled=(not PC or WEBCAM)),
+  #PythonProcess("dmonitoringmodeld", "selfdrive.modeld.dmonitoringmodeld", driverview, enabled=(not PC or WEBCAM)),
   NativeProcess("encoderd", "system/loggerd", ["./encoderd"], only_onroad),
   NativeProcess("stream_encoderd", "system/loggerd", ["./encoderd", "--stream"], notcar),
   NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging),
