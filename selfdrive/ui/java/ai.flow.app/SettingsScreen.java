@@ -264,11 +264,11 @@ public class SettingsScreen extends ScreenAdapter {
         });
 
         RHDToggle = new TextButton("  ", appContext.skin, "toggle");
-        RHDToggle.setChecked(params.exists("IsRHD") && params.getBool("IsRHD"));
+        RHDToggle.setChecked(params.exists("IsRhdDetected") && params.getBool("IsRhdDetected"));
         RHDToggle.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeListener.ChangeEvent event, Actor actor) {
-                params.putBool("IsRHD", RHDToggle.isChecked());
+                params.putBool("IsRhdDetected", RHDToggle.isChecked());
             }
         });
 
