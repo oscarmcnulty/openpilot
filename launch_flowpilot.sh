@@ -35,7 +35,7 @@ if pgrep -x "flowinit" > /dev/null
     else
         # start a tmux pane
         source ~/.pyenvrc
-        tmux new-session -d -s "flowpilot" "poetry shell && scons && ./selfdrive/manager/flowinitd.py"
+        tmux new-session -d -s "flowpilot" "poetry run scons && poetry run python selfdrive/manager/flowinitd.py"
         #tmux new-session -d -s "flowpilot" "scons && flowinit"
         tmux attach -t flowpilot
 fi
