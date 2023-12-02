@@ -148,33 +148,8 @@ def main():
                 started = sm['deviceState'].started
                 ensure_running(managed_processes.values(), started, params=params, CP=sm['carParams'], not_run=ignore)
 
-                running_daemons = []
-                for service in managed_processes.values():
-                    if service.proc is None:
-                        continue
-                    is_running = service.get_process_state_msg().running
-                    if is_running:
-                        running_daemons.append("%s%s\u001b[0m" % ("\u001b[32m", service.name))
-                    else:
-                        running_daemons.append("%s%s\u001b[0m" % ("\u001b[31m", service.name))
-                        #if service.communicated:
-                        #    continue
-                        #_, stderr = service.proc.communicate()
-                        #if stderr is not None:
-                        #    stderr = stderr.decode("utf-8")
-                        #    print("%s%s\u001b[0m" % ("\u001b[31m", f"[{service.name}] " + stderr))
-                        #    if "KeyboardInterrupt" not in stderr:
-                        #        capture_error(stderr, level="error")
-                        try:
-                            subprocess.check_output(service.proc, stderr=subprocess.PIPE)
-                        except subprocess.CalledProcessError as e:
-                            e.stderr = stderr.decode(sys.getfilesystemencoding())
-                            print("%s%s\u001b[0m" % ("\u001b[31m", f"[{service.name}] " + stderr))
-                            if "KeyboardInterrupt" not in stderr:
-                                capture_error(stderr, level="error")
-                            print('exit code: {}'.format(e.returncode))
-                            print('stdout: {}'.format(e.output.decode(sys.getfilesystemencoding())))
-                            print('stderr: {}'.format(e.stderr.decode(sys.getfilesystemencoding())))
+                running_daemons = ["%s%s\u001b[0m" % ("\u001b[32m" if p.proc.is_alive() else "\u001b[31m", p.name)
+                       for p in managed_processes.values() if p.proc]
                         
                 running_daemons.append("%s%s\u001b[0m" % ("\u001b[32m", "flowinitd"))
                 if flowpilot_running():
