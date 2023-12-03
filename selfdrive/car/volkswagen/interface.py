@@ -191,7 +191,7 @@ class CarInterface(CarInterfaceBase):
     elif candidate == CAR.AUDI_Q3_MK2:
       ret.mass = 1623
       ret.wheelbase = 2.68
-    
+
     elif candidate == CAR.AUDI_Q5_MK1:
       ret.mass = 1975
       ret.wheelbase = 2.81

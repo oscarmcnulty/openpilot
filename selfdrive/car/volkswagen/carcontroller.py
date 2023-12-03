@@ -15,7 +15,7 @@ class CarController:
   def __init__(self, dbc_name, CP, VM):
     self.CP = CP
     self.CCP = CarControllerParams(CP)
-    
+
     if CP.carFingerprint in PQ_CARS:
       self.CCS = pqcan
     elif CP.carFingerprint in MLB_CARS:
