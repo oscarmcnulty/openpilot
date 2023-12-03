@@ -1,4 +1,4 @@
-# hard-forked from https://github.com/commaai/openpilot/tree/05b37552f3a38f914af41f44ccc7c633ad152a15/selfdrive/boardd/pandad.py
+#!/usr/bin/env python3
 # simple boardd wrapper that updates the panda first
 import os
 import usb1
@@ -8,10 +8,11 @@ from typing import List, NoReturn
 from functools import cmp_to_key
 
 from panda import Panda, PandaDFU, PandaProtocolMismatch, FW_PATH
-from common.basedir import BASEDIR
-from common.params import Params
-from system.hardware import HARDWARE
-from selfdrive.swaglog import cloudlog
+from openpilot.common.basedir import BASEDIR
+from openpilot.common.params import Params
+from openpilot.selfdrive.boardd.set_time import set_time
+from openpilot.system.hardware import HARDWARE
+from openpilot.system.swaglog import cloudlog
 
 from common.system import is_android, is_android_rooted
 
