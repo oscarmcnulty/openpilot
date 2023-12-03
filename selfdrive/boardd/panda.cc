@@ -147,10 +147,10 @@ std::optional<std::vector<uint8_t>> Panda::get_firmware_version() {
   int read_1 = handle->control_read(0xd3, 0, 0, &fw_sig_buf[0], 64);
   int read_2 = handle->control_read(0xd4, 0, 0, &fw_sig_buf[64], 64);
   if ((read_1 == 64) && (read_2 == 64)) {
-    return std::make_optional(fw_sig_buf)
+    return std::make_optional(fw_sig_buf);
   } else {
     LOGE("Could not read panda firmware version");
-    return std::nullopt
+    return std::nullopt;
   }
 }
 
