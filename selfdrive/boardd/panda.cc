@@ -181,7 +181,9 @@ bool Panda::up_to_date() {
       if (content.size() == 0){
         LOGE("Could not read firmware file %s", fn);
       } else if (content.size() >= fw_sig->size()) {
-        LOGE("Firmware signature from file %s: %s", fn, content.substr(content.size() - fw_sig->size()).c_str());
+        std::string subStr = content.substr(content.size() - fw_sig->size());
+        std::vector<uint8_t> subVec(subStr.begin(), subStr.end());
+        LOGE("Firmware signature from file %s: %s", fn, to_hex_string(subVec).c_str());
       } else if (content.size() >= fw_sig->size() &&
           memcmp(content.data() + content.size() - fw_sig->size(), fw_sig->data(), fw_sig->size()) == 0) {
         return true;
