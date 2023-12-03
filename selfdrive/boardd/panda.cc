@@ -142,11 +142,21 @@ void Panda::set_loopback(bool loopback) {
   handle->control_write(0xe5, loopback, 0);
 }
 
+std::string to_hex_string(const std::vector<uint8_t>& data) {
+    std::stringstream ss;
+    for(const auto &byte : data) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
+    }
+    return ss.str();
+}
+
 std::optional<std::vector<uint8_t>> Panda::get_firmware_version() {
   std::vector<uint8_t> fw_sig_buf(128);
   int read_1 = handle->control_read(0xd3, 0, 0, &fw_sig_buf[0], 64);
   int read_2 = handle->control_read(0xd4, 0, 0, &fw_sig_buf[64], 64);
   if ((read_1 == 64) && (read_2 == 64)) {
+    std::string hexStr = to_hex_string(fw_sig_buf);
+    LOGE("Firmware version: %s", hexStr.c_str()); // Log the vector for debugging
     return std::make_optional(fw_sig_buf);
   } else {
     LOGE("Could not read panda firmware version");
