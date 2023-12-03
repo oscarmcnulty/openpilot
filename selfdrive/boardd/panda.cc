@@ -177,7 +177,7 @@ bool Panda::up_to_date() {
   if (auto fw_sig = get_firmware_version()) {
     for (auto fn : { "panda.bin.signed", "panda_h7.bin.signed" }) {
       auto content = util::read_file(std::string("../../panda/board/obj/") + fn);
-      std::vector<uint8_t> contentVec(content.begin(), content.end());
+      std::vector<uint8_t> contentVec(content.begin() + content.size() - fw_sig->size(), content.end());
       LOGE("Firmware signature from file %s: %s", fn, to_hex_string(contentVec).c_str());
       if (content.size() >= fw_sig->size() &&
           memcmp(content.data() + content.size() - fw_sig->size(), fw_sig->data(), fw_sig->size()) == 0) {
