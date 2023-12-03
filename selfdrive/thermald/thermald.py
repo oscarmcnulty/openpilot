@@ -10,16 +10,16 @@ import psutil
 
 import cereal.messaging as messaging
 from cereal import log
-from common.dict_helpers import strip_deprecated_keys
-from common.filter_simple import FirstOrderFilter
-from common.params import Params
-from common.realtime import DT_TRML, sec_since_boot
-from common.system import is_android, is_android_rooted
-from selfdrive.controls.lib.alertmanager import set_offroad_alert
-from system.hardware import HARDWARE
-from system.loggerd.config import get_available_percent
-from selfdrive.statsd import statlog
-from selfdrive.swaglog import cloudlog
+from openpilot.common.dict_helpers import strip_deprecated_keys
+from openpilot.common.filter_simple import FirstOrderFilter
+from openpilot.common.params import Params
+from openpilot.common.realtime import DT_TRML, sec_since_boot
+from openpilot.common.system import is_android, is_android_rooted
+from openpilot.selfdrive.controls.lib.alertmanager import set_offroad_alert
+from openpilot.system.hardware import HARDWARE
+from openpilot.system.loggerd.config import get_available_percent
+from openpilot.selfdrive.statsd import statlog
+from openpilot.system.swaglog import cloudlog
 
 ThermalStatus = log.DeviceState.ThermalStatus
 NetworkType = log.DeviceState.NetworkType

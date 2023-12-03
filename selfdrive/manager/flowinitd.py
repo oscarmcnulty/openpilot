@@ -14,14 +14,14 @@ from openpilot.common import system
 from openpilot.common.path import external_android_storage
 import cereal.messaging as messaging
 
-from selfdrive.manager.daemon import Daemon, DaemonSig
-from selfdrive.manager.filelock import FileLock
-from selfdrive.manager.process import ensure_running
-from selfdrive.manager.process_config import managed_processes
+from openpilot.selfdrive.manager.daemon import Daemon, DaemonSig
+from openpilot.selfdrive.manager.filelock import FileLock
+from openpilot.selfdrive.manager.process import ensure_running
+from openpilot.selfdrive.manager.process_config import managed_processes
 
-from selfdrive.version import is_dirty, get_commit, get_version, get_origin, get_short_branch, \
+from openpilot.selfdrive.version import is_dirty, get_commit, get_version, get_origin, get_short_branch, \
                               terms_version, training_version
-from selfdrive.swaglog import cloudlog
+from system.swaglog import cloudlog
 import openpilot.selfdrive.sentry as sentry
 
 os.chdir(BASEDIR)

@@ -7,13 +7,13 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from typing import NoReturn, Union, List, Dict
 
-from common.params import Params
+from openpilot.common.params import Params
 from cereal.messaging import SubMaster
-from selfdrive.swaglog import cloudlog
-from common.system import get_platform
-from common.file_helpers import atomic_write_in_dir
-from selfdrive.version import get_normalized_origin, get_short_branch, get_short_version, is_dirty
-from system.loggerd.config import STATS_DIR, STATS_DIR_FILE_LIMIT, STATS_SOCKET, STATS_FLUSH_TIME_S
+from openpilot.system.swaglog import cloudlog
+from openpilot.common.system import get_platform
+from openpilot.common.file_helpers import atomic_write_in_dir
+from openpilot.selfdrive.version import get_normalized_origin, get_short_branch, get_short_version, is_dirty
+from openpilot.system.loggerd.config import STATS_DIR, STATS_DIR_FILE_LIMIT, STATS_SOCKET, STATS_FLUSH_TIME_S
 
 
 class METRIC_TYPE:

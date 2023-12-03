@@ -5,7 +5,7 @@ from typing import List, Optional
 from functools import lru_cache
 
 from common.basedir import BASEDIR
-from selfdrive.swaglog import cloudlog
+from openpilot.system.swaglog import cloudlog
 
 TESTED_BRANCHES = ['release']
 

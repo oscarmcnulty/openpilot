@@ -1,10 +1,10 @@
 # hard-forked from https://github.com/commaai/openpilot/tree/05b37552f3a38f914af41f44ccc7c633ad152a15/selfdrive/controls/lib/lane_planner.py
 import numpy as np
 from cereal import log
-from common.filter_simple import FirstOrderFilter
-from common.numpy_fast import interp
-from common.realtime import DT_MDL
-from selfdrive.swaglog import cloudlog
+from openpilot.common.filter_simple import FirstOrderFilter
+from openpilot.common.numpy_fast import interp
+from openpilot.common.realtime import DT_MDL
+from openpilot.system.swaglog import cloudlog
 
 
 TRAJECTORY_SIZE = 33
