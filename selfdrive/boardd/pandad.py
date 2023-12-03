@@ -34,6 +34,7 @@ def flash_panda(panda_serial: str) -> Panda:
     raise
   
   fw_signature = get_expected_signature(panda)
+  cloudlog.warning(f"expected fw signature: {fw_signature}")
   internal_panda = panda.is_internal() and not panda.bootstub
 
   panda_version = "bootstub" if panda.bootstub else panda.get_version()
@@ -58,6 +59,7 @@ def flash_panda(panda_serial: str) -> Panda:
     raise AssertionError
 
   panda_signature = panda.get_signature()
+  cloudlog.warning(f"actual fw signature: {panda_signature}")
   if panda_signature != fw_signature:
     cloudlog.info("Version mismatch after flashing, exiting")
     raise AssertionError
