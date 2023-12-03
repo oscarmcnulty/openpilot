@@ -123,6 +123,8 @@ def main() -> NoReturn:
   first_run = True
   params = Params()
 
+  cloudlog.info(f"Running pandad in android root mode")
+
   while True:
     try:
       params.remove("PandaSignatures")
