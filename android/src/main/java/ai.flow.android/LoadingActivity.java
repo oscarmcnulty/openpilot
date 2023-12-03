@@ -2,6 +2,7 @@ package ai.flow.android;
 
 import ai.flow.app.R;
 import ai.flow.common.ParamsInterface;
+
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -10,6 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
+import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageView;
@@ -91,8 +93,7 @@ public class LoadingActivity extends AppCompatActivity {
                 bootTermux();
 
                 ParamsInterface params = ParamsInterface.getInstance();
-                params.getBool("F3");
-
+                params.getBool("UseSNPE");
                 bootComplete = true;
 
                 Intent intent = new Intent(getApplicationContext(), AndroidLauncher.class);

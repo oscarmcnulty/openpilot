@@ -20,7 +20,7 @@ public class SetUpScreen extends ScreenAdapter {
     @Override
     public void show() {
 
-        if (!params.existsAndCompare("HasAcceptedTerms", true)) {
+        /*if (!params.existsAndCompare("HasAcceptedTerms", true)) {
             appContext.setScreen(new TermsScreen(appContext));
             return;
         }
@@ -33,12 +33,16 @@ public class SetUpScreen extends ScreenAdapter {
         if (!params.existsAndCompare("CompletedTrainingVersion", true)){
             appContext.setScreen(new TrainingScreen(appContext));
             return;
-        }
+        }*/
 
         if (!params.exists(fcamIntrinsicParam)){
-           appContext.launcher.startSensorD();
-           appContext.setScreen(new CalibrationInfo(appContext, false));
-           return;
+            byte[] cameraMatrix = new byte[]{36, 120, 112, 68, 0, 0, 0, 0, -43, -117, 32, 68, 0, 0, 0, 0, 120, -73, 112, 68, 16, 87, -84, 67, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -128, 63};
+            byte[] distortionMatrix = new byte[]{10, -52, 72, 62, 36, -70, -82, -65, 121, 5, -54, -70, -51, 101, 61, 57, 112, 115, 52, 64};
+            params.put("CameraMatrix", cameraMatrix);
+            params.put("DistortionCoefficients", distortionMatrix);
+           //appContext.launcher.startSensorD();
+           //appContext.setScreen(new CalibrationInfo(appContext, false));
+           //return;
         }
 
         appContext.launcher.startAllD();

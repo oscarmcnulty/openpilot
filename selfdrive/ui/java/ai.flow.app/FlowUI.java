@@ -118,26 +118,22 @@ public class FlowUI extends Game {
 
         updateOnroadThread.start();
 
-        if (Gdx.gl != null) { // else headless mode
-            shapeRenderer = new ShapeRenderer();
-            font = new BitmapFont();
-            font.setColor(0f, 1f, 0f, 1f);
-            font.getData().setScale(2);
-            skin = new Skin(new TextureAtlas(Gdx.files.absolute(Path.internal("selfdrive/assets/skins/uiskin.atlas"))));
-            for (Texture texture: skin.getAtlas().getTextures())
-                texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
-            loadInternalFonts(skin);
-            skin.load(Gdx.files.absolute(Path.internal("selfdrive/assets/skins/uiskin.json")));
 
-            settingsScreen = new SettingsScreen(this);
-            onRoadScreen = new OnRoadScreen(this);
+        shapeRenderer = new ShapeRenderer();
+        font = new BitmapFont();
+        font.setColor(0f, 1f, 0f, 1f);
+        font.getData().setScale(2);
+        skin = new Skin(new TextureAtlas(Gdx.files.absolute(Path.internal("selfdrive/assets/skins/uiskin.atlas"))));
+        for (Texture texture: skin.getAtlas().getTextures())
+            texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        loadInternalFonts(skin);
+        skin.load(Gdx.files.absolute(Path.internal("selfdrive/assets/skins/uiskin.json")));
 
-            setScreen(new SetUpScreen(this));
-        }
-        else{
-            launcher.startSensorD();
-            launcher.startAllD();
-        }
+        settingsScreen = new SettingsScreen(this);
+        onRoadScreen = new OnRoadScreen(this);
+
+        setScreen(new SetUpScreen(this));
+
     }
 
     @Override

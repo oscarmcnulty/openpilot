@@ -128,7 +128,7 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 		modelExecutor = new ModelExecutorF2(model);
 		Launcher launcher = new Launcher(sensors, modelExecutor);
 
-		ErrorReporter ACRAreporter = ACRA.getErrorReporter();
+		/*ErrorReporter ACRAreporter = ACRA.getErrorReporter();
 		ACRAreporter.putCustomData("DongleId", dongleID);
 		ACRAreporter.putCustomData("AndroidAppVersion", ai.flow.app.BuildConfig.VERSION_NAME);
 		ACRAreporter.putCustomData("FlowpilotVersion", params.getString("Version"));
@@ -136,7 +136,7 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 
 		ACRAreporter.putCustomData("GitCommit", params.getString("GitCommit"));
 		ACRAreporter.putCustomData("GitBranch", params.getString("GitBranch"));
-		ACRAreporter.putCustomData("GitRemote", params.getString("GitRemote"));
+		ACRAreporter.putCustomData("GitRemote", params.getString("GitRemote"));*/
 
 		MainFragment fragment = new MainFragment(new FlowUI(launcher, androidHardwareManager, pid));
 		cameraManager.setLifeCycleFragment(fragment);

@@ -138,7 +138,7 @@ public class ModelExecutorF2 extends ModelExecutor implements Runnable{
         lastFrameID = frameData.getFrameId();
 
         initialized = true;
-        params.putBool("ModelDReady", true);
+        //params.putBool("ModelDReady", true);
         while (!exit) {
             if (stopped){
                 try {

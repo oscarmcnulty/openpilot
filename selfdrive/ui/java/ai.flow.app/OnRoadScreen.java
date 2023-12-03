@@ -44,6 +44,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.FormatStyle;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 
@@ -475,6 +476,16 @@ public class OnRoadScreen extends ScreenAdapter {
     }
 
     public void updateControls() {
+        Definitions.Event.Reader event = sh.recv(controlsStateTopic);
+        org.capnproto.StructList.Reader structListReader = event.getCan();
+
+        Iterator<ai.flow.definitions.Definitions.CanData.Reader> iter = structListReader.iterator();
+
+        while (iter.hasNext()){
+            ai.flow.definitions.Definitions.CanData.Reader c = iter.next();
+            c.toString();
+        }
+
         controlState = sh.recv(controlsStateTopic).getControlsState();
         canErrCount = controlState.getCanErrorCounter();
 
