@@ -5,6 +5,9 @@
 #include <cassert>
 #include <stdexcept>
 #include <vector>
+#include <sstream>
+#include <iomanip>
+#include <string>
 
 #include "cereal/messaging/messaging.h"
 #include "common/swaglog.h"
