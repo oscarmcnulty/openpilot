@@ -178,8 +178,11 @@ bool Panda::up_to_date() {
     for (auto fn : { "panda.bin.signed", "panda_h7.bin.signed" }) {
       auto content = util::read_file(std::string("../../panda/board/obj/") + fn);
       //std::vector<uint8_t> contentVec(content.begin() + content.size() - fw_sig->size(), content.end());
-      LOGE("Firmware signature from file %s: %s", fn, content.substr(content.size() - fw_sig->size()).c_str());
-      if (content.size() >= fw_sig->size() &&
+      if (content.size() == 0){
+        LOGE("Could not read firmware file %s", fn);
+      } else if (content.size() >= fw_sig->size()) {
+        LOGE("Firmware signature from file %s: %s", fn, content.substr(content.size() - fw_sig->size()).c_str());
+      } else if (content.size() >= fw_sig->size() &&
           memcmp(content.data() + content.size() - fw_sig->size(), fw_sig->data(), fw_sig->size()) == 0) {
         return true;
       }
