@@ -306,7 +306,7 @@ int Params::remove(const std::string &key) {
 std::string Params::get(const std::string &key, bool block) {
   if (!block) {
     auto result = util::read_file(getParamPath(key));
-    LOG("Params::get key:%s, result:%s", key.c_str(), result.c_str());
+    //LOG("Params::get key:%s, result:%s", key.c_str(), result.c_str());
     return util::read_file(getParamPath(key));
   } else {
     // blocking read until successful
@@ -325,7 +325,7 @@ std::string Params::get(const std::string &key, bool block) {
 
     std::signal(SIGINT, prev_handler_sigint);
     std::signal(SIGTERM, prev_handler_sigterm);
-    LOG("Params::get key:%s, result:%s", key.c_str(), value.c_str());
+    //LOG("Params::get key:%s, result:%s", key.c_str(), value.c_str());
     return value;
   }
 }
