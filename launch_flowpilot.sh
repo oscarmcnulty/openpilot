@@ -19,6 +19,7 @@ export FINGERPRINT="AUDI Q5 1ST GEN"
 ## android specific ##
 export USE_SNPE="1" # only works for snapdragon devices.
 
+export LOGPRINT="info"
 
 if ! command -v tmux &> /dev/null
 then
