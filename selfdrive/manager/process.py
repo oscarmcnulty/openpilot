@@ -289,4 +289,3 @@ def ensure_running(procs: ValuesView[ManagerProcess], started: bool, params=None
     p.check_watchdog(started)
 
   return running
-  
