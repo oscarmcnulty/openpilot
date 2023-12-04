@@ -12,6 +12,10 @@ class ParamsServer:
 
     @staticmethod
     def put_thread(exit_event):
+        sock_put = zmq.Context().socket(zmq.REP)
+        sock_put_path = get_zmq_socket_path("6002")
+        cloudlog.info("sock_put_path: %s", sock_put_path)
+        sock_put.bind(sock_put_path) 
         while not exit_event.is_set():
             key, val = sock_put.recv_multipart()
             cloudlog.info(f"keyvald SET: {key} = {val}")
@@ -20,6 +24,10 @@ class ParamsServer:
         
     @staticmethod
     def get_thread(exit_event):
+        sock_get = zmq.Context().socket(zmq.REP)
+        sock_get_path = get_zmq_socket_path("6001")
+        cloudlog.info("sock_get_path: %s", sock_get_path)
+        sock_get.bind(sock_get_path) # get socket
         while not exit_event.is_set():
             key = sock_get.recv()
             print(f"keyvald GET: {key}")
@@ -30,6 +38,10 @@ class ParamsServer:
 
     @staticmethod
     def delete_thread(exit_event):
+        sock_del = zmq.Context().socket(zmq.REP)
+        sock_del_path = get_zmq_socket_path("6003")
+        cloudlog.info("sock_del_path: %s", sock_del_path)
+        sock_del.bind(sock_del_path) # del socket
         while not exit_event.is_set():
             key = sock_del.recv()
             Params().remove(key)
@@ -37,21 +49,6 @@ class ParamsServer:
     
     @staticmethod 
     def start():
-        ctx = zmq.Context()
-        sock_get = ctx.socket(zmq.REP)
-        sock_get_path = get_zmq_socket_path("6001")
-        cloudlog.info("sock_get_path: %s", sock_get_path)
-        sock_get.bind(sock_get_path) # get socket
-
-        sock_put = ctx.socket(zmq.REP)
-        sock_put_path = get_zmq_socket_path("6002")
-        cloudlog.info("sock_put_path: %s", sock_put_path)
-        sock_put.bind(sock_put_path) # put socket
-
-        sock_del = ctx.socket(zmq.REP)
-        sock_del_path = get_zmq_socket_path("6003")
-        cloudlog.info("sock_del_path: %s", sock_del_path)
-        sock_del.bind(sock_del_path) # del socket
         ParamsServer.exit_event.clear()
         if ParamsServer.threads:
             return
