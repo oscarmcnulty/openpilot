@@ -38,7 +38,8 @@ if pgrep -x "flowinit" > /dev/null
     else
         # start a tmux pane
         source ~/.pyenvrc
-        tmux new-session -d -s "flowpilot" "poetry run scons && poetry run python openpilot/selfdrive/manager/manager.py >tmux.log 2>&1"
+        #tmux pipe-pane "cat >> $HOME/.tmux/logs/tmux_session_#S_#I_#P_$(date +%Y%m%d%H%M%S).log" 2> /dev/null
+        tmux -v -v new-session  -d -s "flowpilot" "poetry run scons && poetry run python openpilot/selfdrive/manager/manager.py"
         #tmux new-session -d -s "flowpilot" "scons && flowinit"
         tmux attach -t flowpilot
 fi

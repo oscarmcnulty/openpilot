@@ -4,6 +4,7 @@ desktop/bin
 !libs/capnpc-java/*
 libs/capnpc-java/capnproto-java
 selfdrive/modeld/bin/
+tmux-*
 
 venv/
 .venv/
