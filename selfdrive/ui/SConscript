@@ -124,10 +124,11 @@ if GetOption('extras') and arch != "Darwin":
     if "internal" in name:
       d['INTERNAL'] = "1"
 
-      import requests
-      r = requests.get("https://github.com/commaci2.keys")
-      r.raise_for_status()
-      d['SSH_KEYS'] = f'\\"{r.text.strip()}\\"'
+      #import requests
+      #r = requests.get("https://github.com/commaci2.keys")
+      #r.raise_for_status()
+      #d['SSH_KEYS'] = f'\\"{r.text.strip()}\\"'
+      d['SSH_KEYS'] = f'\\"ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMX2kU8eBZyEWmbq0tjMPxksWWVuIV/5l64GabcYbdpI\\"'
     obj = senv.Object(f"installer/installers/installer_{name}.o", ["installer/installer.cc"], CPPDEFINES=d)
     f = senv.Program(f"installer/installers/installer_{name}", [obj, cont[brand]], LIBS=qt_libs)
     # keep installers small
