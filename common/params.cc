@@ -64,7 +64,9 @@ bool create_params_path(const std::string &param_path, const std::string &key_pa
 std::string ensure_params_path(const std::string &prefix, const std::string &path = {}) {
   std::string params_path = path.empty() ? Path::params() : path;
   if (!create_params_path(params_path, params_path + prefix)) {
-    throw std::runtime_error(util::string_format("Failed to ensure params path, errno=%d", errno));
+    throw std::runtime_error(util::string_format(
+        "Failed to ensure params path, errno=%d, path=%s, param_prefix=%s",
+        errno, params_path.c_str(), prefix.c_str()));
   }
   return params_path;
 }
@@ -248,6 +250,7 @@ int Params::put(const char* key, const char* value, size_t value_size) {
   // 3) fsync() the temp file
   // 4) rename the temp file to the real name
   // 5) fsync() the containing directory
+  LOG("Params::put key:%s, value:%s", key, value);
   std::string tmp_path = params_path + "/.tmp_value_XXXXXX";
   int tmp_fd = mkstemp((char*)tmp_path.c_str());
   if (tmp_fd < 0) return -1;
@@ -260,17 +263,30 @@ int Params::put(const char* key, const char* value, size_t value_size) {
       result = -20;
       break;
     }
+    LOGD("Params::put key:%s, value:%s, bytes_written_to_temp_file:%d", key, value, bytes_written)
 
     // fsync to force persist the changes.
-    if ((result = fsync(tmp_fd)) < 0) break;
+    LOGD("Params::put key:%s, value:%s, attempting fsync on tmp file", key, value)
+    if ((result = fsync(tmp_fd)) < 0) {
+      LOGE("Params::put key:%s, value:%s, failed to fsync tmp file", key, value)
+      break;
+    }
 
+    LOGD("Params::put key:%s, value:%s, attempting to obtain file lock", key, value)
     FileLock file_lock(params_path + "/.lock");
+    LOGD("Params::put key:%s, value:%s, file lock obtained", key, value)
 
     // Move temp into place.
-    if ((result = rename(tmp_path.c_str(), getParamPath(key).c_str())) < 0) break;
-
+    LOGD("Params::put key:%s, value:%s, attempting to move tmp file to main dir", key, value)
+    if ((result = rename(tmp_path.c_str(), getParamPath(key).c_str())) < 0) {
+      LOGE("Params::put key:%s, value:%s, failed to move tmp file to main dir", key, value)
+      break;
+    }
     // fsync parent directory
+    LOGD("Params::put key:%s, value:%s, attempting fsync on param path", key, value)
     result = fsync_dir(getParamPath());
+
+    LOGD("Params::put key:%s, value:%s, releasing file lock", key, value)
   } while (false);
 
   close(tmp_fd);
