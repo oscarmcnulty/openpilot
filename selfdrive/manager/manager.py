@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-import logging
+import datetime
+import os
 import time
 from typing import List
 from pathlib import Path
 import traceback
 import subprocess
-import os
+
 
 import psutil
-from openpilot.common.params_pyx import Params, ParamKeyType
+from openpilot.common.params import Params, ParamKeyType
 from openpilot.common.basedir import BASEDIR
 from openpilot.common import system
 from openpilot.common.path import external_android_storage
@@ -16,12 +17,13 @@ import cereal.messaging as messaging
 
 from openpilot.selfdrive.manager.daemon import Daemon, DaemonSig
 from openpilot.selfdrive.manager.filelock import FileLock
+from openpilot.selfdrive.manager.helpers import unblock_stdout
 from openpilot.selfdrive.manager.process import ensure_running
 from openpilot.selfdrive.manager.process_config import managed_processes
 
 from openpilot.selfdrive.version import is_dirty, get_commit, get_version, get_origin, get_short_branch, \
                               terms_version, training_version
-from system.swaglog import cloudlog
+from system.swaglog import cloudlog, add_file_handler
 import openpilot.selfdrive.sentry as sentry
 
 os.chdir(BASEDIR)
@@ -35,6 +37,21 @@ ANDROID_APP = "ai.flow.app"
 ENV_VARS = ["USE_GPU", "ZMQ_MESSAGING_PROTOCOL", "ZMQ_MESSAGING_ADDRESS",
             "SIMULATION", "FINGERPRINT", "MSGQ", "PASSIVE"]
 UNREGISTERED_DONGLE_ID = "UnregisteredDevice"
+
+def manager_prepare() -> None:
+  for p in managed_processes.values():
+    p.prepare()
+
+def manager_cleanup() -> None:
+  # send signals to kill all procs
+  for p in managed_processes.values():
+    p.stop(block=False)
+
+  # ensure all are killed
+  for p in managed_processes.values():
+    p.stop(block=True)
+
+  cloudlog.info("everything is dead")
 
 params = Params()
 
@@ -59,11 +76,6 @@ def append_extras(command: str):
             command += f" -e '{var}' '{val}'"
     return command
 
-
-def manager_cleanup() -> None:
-  # send signals to kill all procs
-  for p in managed_processes.values():
-    p.stop()
 
 
 def main():
@@ -187,5 +199,27 @@ def main():
             manager_cleanup()
 
 if __name__ == "__main__":
-  main()
+  unblock_stdout()
+
+  try:
+    main()
+  except Exception:
+    add_file_handler(cloudlog)
+    cloudlog.exception("Manager failed to start")
+
+    try:
+      managed_processes['ui'].stop()
+    except Exception:
+      pass
+
+    # Show last 3 lines of traceback
+    error = traceback.format_exc(-3)
+    error = "Manager failed to start\n\n" + error
+    with TextWindow(error) as t:
+      t.wait_for_exit()
+
+    raise
+
+  # manual exit because we are forked
+  sys.exit(0)
             
