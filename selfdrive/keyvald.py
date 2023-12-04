@@ -2,6 +2,7 @@ import zmq
 import threading
 from cereal.messaging.utils import get_zmq_socket_path
 from common.params import Params
+from system.swaglog import cloudlog
 
 
 ctx = zmq.Context()
@@ -22,6 +23,7 @@ class ParamsServer:
     def put_thread(exit_event):
         while not exit_event.is_set():
             key, val = sock_put.recv_multipart()
+            cloudlog.info(f"keyvald SET: {key} = {val}")
             params.put(key, val)
             sock_put.send(b"1")
         
@@ -30,6 +32,7 @@ class ParamsServer:
         while not exit_event.is_set():
             key = sock_get.recv()
             data = params.get(key)
+            cloudlog.info(f"keyvald GET: {key} = {data}")
             sock_get.send(data if data is not None else b"")
 
     @staticmethod
