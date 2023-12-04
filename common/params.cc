@@ -263,30 +263,30 @@ int Params::put(const char* key, const char* value, size_t value_size) {
       result = -20;
       break;
     }
-    LOGD("Params::put key:%s, value:%s, bytes_written_to_temp_file:%d", key, value, bytes_written)
+    //LOGD("Params::put key:%s, value:%s, bytes_written_to_temp_file:%d", key, value, bytes_written)
 
     // fsync to force persist the changes.
-    LOGD("Params::put key:%s, value:%s, attempting fsync on tmp file", key, value)
+    //LOGD("Params::put key:%s, value:%s, attempting fsync on tmp file", key, value)
     if ((result = fsync(tmp_fd)) < 0) {
-      LOGE("Params::put key:%s, value:%s, failed to fsync tmp file", key, value)
+      //LOGE("Params::put key:%s, value:%s, failed to fsync tmp file", key, value)
       break;
     }
 
-    LOGD("Params::put key:%s, value:%s, attempting to obtain file lock", key, value)
+    //LOGD("Params::put key:%s, value:%s, attempting to obtain file lock", key, value)
     FileLock file_lock(params_path + "/.lock");
-    LOGD("Params::put key:%s, value:%s, file lock obtained", key, value)
+    //LOGD("Params::put key:%s, value:%s, file lock obtained", key, value)
 
     // Move temp into place.
-    LOGD("Params::put key:%s, value:%s, attempting to move tmp file to main dir", key, value)
+    //LOGD("Params::put key:%s, value:%s, attempting to move tmp file to main dir", key, value)
     if ((result = rename(tmp_path.c_str(), getParamPath(key).c_str())) < 0) {
-      LOGE("Params::put key:%s, value:%s, failed to move tmp file to main dir", key, value)
+      //LOGE("Params::put key:%s, value:%s, failed to move tmp file to main dir", key, value)
       break;
     }
     // fsync parent directory
-    LOGD("Params::put key:%s, value:%s, attempting fsync on param path", key, value)
+    //LOGD("Params::put key:%s, value:%s, attempting fsync on param path", key, value)
     result = fsync_dir(getParamPath());
 
-    LOGD("Params::put key:%s, value:%s, releasing file lock", key, value)
+    //LOGD("Params::put key:%s, value:%s, releasing file lock", key, value)
   } while (false);
 
   close(tmp_fd);
@@ -305,6 +305,8 @@ int Params::remove(const std::string &key) {
 
 std::string Params::get(const std::string &key, bool block) {
   if (!block) {
+    auto result = util::read_file(getParamPath(key));
+    LOG("Params::get key:%s, result:%s", key.c_str(), result.c_str());
     return util::read_file(getParamPath(key));
   } else {
     // blocking read until successful
@@ -314,7 +316,8 @@ std::string Params::get(const std::string &key, bool block) {
 
     std::string value;
     while (!params_do_exit) {
-      if (value = util::read_file(getParamPath(key)); !value.empty()) {
+      value = util::read_file(getParamPath(key));
+      if (!value.empty()) {
         break;
       }
       util::sleep_for(100);  // 0.1 s
@@ -322,6 +325,7 @@ std::string Params::get(const std::string &key, bool block) {
 
     std::signal(SIGINT, prev_handler_sigint);
     std::signal(SIGTERM, prev_handler_sigterm);
+    LOG("Params::get key:%s, result:%s", key.c_str(), value.c_str());
     return value;
   }
 }
