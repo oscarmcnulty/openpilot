@@ -3,10 +3,11 @@ import datetime
 import os
 import signal
 import time
-from typing import List
 from pathlib import Path
-import traceback
 import subprocess
+import sys
+import traceback
+from typing import List
 
 
 import psutil
@@ -22,8 +23,9 @@ from openpilot.selfdrive.manager.helpers import unblock_stdout
 from openpilot.selfdrive.manager.process import ensure_running
 from openpilot.selfdrive.manager.process_config import managed_processes
 
-from openpilot.selfdrive.version import is_dirty, get_commit, get_version, get_origin, get_short_branch, \
+from openpilot.system.version import is_dirty, get_commit, get_version, get_origin, get_short_branch, \
                               terms_version, training_version
+from system.hardware import HARDWARE, PC
 from system.swaglog import cloudlog, add_file_handler
 import openpilot.selfdrive.sentry as sentry
 

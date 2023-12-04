@@ -12,7 +12,7 @@ from cereal.messaging import SubMaster
 from openpilot.system.swaglog import cloudlog
 from openpilot.common.system import get_platform
 from openpilot.common.file_helpers import atomic_write_in_dir
-from openpilot.selfdrive.version import get_normalized_origin, get_short_branch, get_short_version, is_dirty
+from openpilot.system.version import get_normalized_origin, get_short_branch, get_short_version, is_dirty
 from openpilot.system.loggerd.config import STATS_DIR, STATS_DIR_FILE_LIMIT, STATS_SOCKET, STATS_FLUSH_TIME_S
 
 
