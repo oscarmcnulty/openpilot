@@ -7,11 +7,19 @@ from system.swaglog import cloudlog
 
 ctx = zmq.Context()
 sock_get = ctx.socket(zmq.REP)
-sock_get.bind(get_zmq_socket_path("6001")) # get socket
+sock_get_path = get_zmq_socket_path("6001")
+cloudlog.info("sock_get_path: %s", sock_get_path)
+sock_get.bind(sock_get_path) # get socket
+
 sock_put = ctx.socket(zmq.REP)
-sock_put.bind(get_zmq_socket_path("6002")) # put socket
+sock_put_path = get_zmq_socket_path("6002")
+cloudlog.info("sock_put_path: %s", sock_put_path)
+sock_put.bind(sock_put_path) # put socket
+
 sock_del = ctx.socket(zmq.REP)
-sock_del.bind(get_zmq_socket_path("6003")) # del socket
+sock_del_path = get_zmq_socket_path("6003")
+cloudlog.info("sock_del_path: %s", sock_del_path)
+sock_del.bind(sock_del_path) # del socket
 
 params = Params()
 
