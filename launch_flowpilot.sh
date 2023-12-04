@@ -15,6 +15,7 @@ export ZMQ_MESSAGING_PROTOCOL="TCP" # TCP, INTER_PROCESS, SHARED_MEMORY
 
 export SIMULATION="1"
 export FINGERPRINT="AUDI Q5 1ST GEN"
+export SKIP_FW_QUERY="1"
 
 ## android specific ##
 export USE_SNPE="1" # only works for snapdragon devices.
