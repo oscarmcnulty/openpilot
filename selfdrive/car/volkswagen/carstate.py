@@ -426,7 +426,7 @@ class CarState(CarStateBase):
     if CP.networkLocation == NetworkLocation.fwdCamera:
       # Radars are here on CANBUS.pt
       # TODO: enable radar, testing on CC only car
-      messages += MqbExtraSignals.fwd_radar_messages
+      #messages += MqbExtraSignals.fwd_radar_messages
       if CP.enableBsm:
         messages += MqbExtraSignals.bsm_radar_messages
 
@@ -444,7 +444,7 @@ class CarState(CarStateBase):
     else:
       # Radars are here on CANBUS.cam
       # TODO: enable radar, testing on CC only car
-      messages += MqbExtraSignals.fwd_radar_messages
+      #messages += MqbExtraSignals.fwd_radar_messages
       if CP.enableBsm:
         messages += MqbExtraSignals.bsm_radar_messages
 
