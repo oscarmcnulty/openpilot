@@ -21,6 +21,10 @@ class CarControllerParams:
   STEER_STEP = 2                          # HCA_01/HCA_1 message frequency 50Hz
   ACC_CONTROL_STEP = 2                    # ACC_06/ACC_07/ACC_System frequency 50Hz
 
+  STEER_TIME_MAX = 360                     # Max time that EPS allows uninterrupted HCA steering control
+  STEER_TIME_ALERT = STEER_TIME_MAX - 10   # If mitigation fails, time to soft disengage before EPS timer expires
+  STEER_TIME_STUCK_TORQUE = 1.9            # EPS limits same torque to 6 seconds, reset timer 3x within that period
+
   ACCEL_MAX = 2.0                         # 2.0 m/s max acceleration
   ACCEL_MIN = -3.5                        # 3.5 m/s max deceleration
 
