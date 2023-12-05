@@ -394,51 +394,7 @@ class CarState(CarStateBase):
   @staticmethod
   def get_can_parser_mlb(CP):
 
-    signals = [
-      # sig_name, sig_address
-      ("LWI_Lenkradwinkel", "LWI_01"),           # Absolute steering angle
-      ("LWI_VZ_Lenkradwinkel", "LWI_01"),        # Steering angle sign
-      ("LWI_Lenkradw_Geschw", "LWI_01"),         # Absolute steering rate
-      ("LWI_VZ_Lenkradw_Geschw", "LWI_01"),      # Steering rate sign
-      ("ESP_VL_Radgeschw", "ESP_03"),            # ABS wheel speed, front left
-      ("ESP_VR_Radgeschw", "ESP_03"),            # ABS wheel speed, front right
-      ("ESP_HL_Radgeschw", "ESP_03"),            # ABS wheel speed, rear left
-      ("ESP_HR_Radgeschw", "ESP_03"),            # ABS wheel speed, rear right
-      ("ESP_Gierrate", "ESP_02"),                # Absolute yaw rate
-      ("ESP_VZ_Gierrate", "ESP_02"),             # Yaw rate sign
-      #("FT_Tuer_geoeffnet", "Gateway_05"),       # Door open, driver
-      #("BT_Tuer_geoeffnet", "Gateway_05"),       # Door open, passenger
-      #("HL_Tuer_geoeffnet", "Gateway_05"),       # Door open, rear left
-      #("HR_Tuer_geoeffnet", "Gateway_05"),       # Door open, rear right
-      ("BM_links", "Blinkmodi_01"),              # Left turn signal including comfort blink interval
-      ("BM_rechts", "Blinkmodi_01"),             # Right turn signal including comfort blink interval
-      ("AB_Gurtschloss_FA", "Airbag_02"),        # Seatbelt status, driver
-      ("AB_Gurtschloss_BF", "Airbag_02"),        # Seatbelt status, passenger
-      ("ESP_Fahrer_bremst", "ESP_05"),           # Driver applied brake pressure over threshold
-      ("MO_Fahrer_bremst", "Motor_03"),          # Brake pedal switch
-      ("ESP_Bremsdruck", "ESP_05"),              # Brake pressure
-      ("MO_Fahrpedalrohwert_01", "Motor_03"),    # Accelerator pedal value
-      ("EPS_Lenkmoment", "LH_EPS_03"),           # Absolute driver torque input
-      ("EPS_VZ_Lenkmoment", "LH_EPS_03"),        # Driver torque input sign
-      ("EPS_HCA_Status", "LH_EPS_03"),           # EPS HCA control status
-      ("ESP_Tastung_passiv", "ESP_01"),          # Stability control disabled
-      ("KBI_Handbremse", "Kombi_01"),            # Manual handbrake applied
-      ("TSK_Status", "TSK_02"),                  # ACC engagement status from drivetrain coordinator
-      ("LS_Hauptschalter", "LS_01"),             # ACC button, on/off
-      ("LS_Abbrechen", "LS_01"),                 # ACC button, cancel
-      ("LS_Tip_Setzen", "LS_01"),                # ACC button, set
-      ("LS_Tip_Hoch", "LS_01"),                  # ACC button, increase or accel
-      ("LS_Tip_Runter", "LS_01"),                # ACC button, decrease or decel
-      ("LS_Tip_Wiederaufnahme", "LS_01"),        # ACC button, resume
-      ("LS_Verstellung_Zeitluecke", "LS_01"),    # ACC button, time gap adj
-      ("LS_Typ_Hauptschalter", "LS_01"),         # ACC main button type
-      ("LS_Codierung", "LS_01"),                 # ACC button configuration/coding
-      ("LS_Tip_Stufe_2", "LS_01"),               # unknown related to stalk type
-      ("LS_GRA_ACC_2stufig", "LS_01"),           # unknown related to stalk type
-      ("COUNTER", "LS_01"),                      # GRA_ACC_01 CAN message counter
-    ]
-
-    checks = [
+    messages = [
       # sig_address, frequency
       ("LWI_01", 100),      # From J500 Steering Assist with integrated sensors
       ("LH_EPS_03", 100),   # From J500 Steering Assist with integrated sensors
@@ -476,36 +432,25 @@ class CarState(CarStateBase):
         signals += MqbExtraSignals.bsm_radar_signals
         checks += MqbExtraSignals.bsm_radar_checks
 
-    return CANParser(DBC[CP.carFingerprint]["pt"], signals, checks, CANBUS.pt)
+    return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.pt)
 
   @staticmethod
   def get_cam_can_parser_mlb(CP):
-    signals = []
-    checks = []
+    messages = []
 
     if CP.networkLocation == NetworkLocation.fwdCamera:
-      signals += [
-        # sig_name, sig_address
-        ("LDW_SW_Warnung_links", "LDW_02"),      # Blind spot in warning mode on left side due to lane departure
-        ("LDW_SW_Warnung_rechts", "LDW_02"),     # Blind spot in warning mode on right side due to lane departure
-        ("LDW_Seite_DLCTLC", "LDW_02"),          # Direction of most likely lane departure (left or right)
-        ("LDW_DLC", "LDW_02"),                   # Lane departure, distance to line crossing
-        ("LDW_TLC", "LDW_02"),                   # Lane departure, time to line crossing
-      ]
-      checks += [
+      messages += [
         # sig_address, frequency
         ("LDW_02", 10)      # From R242 Driver assistance camera
       ]
     else:
       # Radars are here on CANBUS.cam
       # TODO: enable radar, testing on CC only car
-      #signals += MqbExtraSignals.fwd_radar_signals
-      #checks += MqbExtraSignals.fwd_radar_checks
+      messages += MqbExtraSignals.fwd_radar_checks
       if CP.enableBsm:
-        signals += MqbExtraSignals.bsm_radar_signals
-        checks += MqbExtraSignals.bsm_radar_checks
+        messages += MqbExtraSignals.bsm_radar_checks
 
-    return CANParser(DBC[CP.carFingerprint]["pt"], signals, checks, CANBUS.cam)
+    return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.cam)
 
   @staticmethod
   def get_cam_can_parser_pq(CP):
