@@ -5,7 +5,7 @@ from openpilot.common.conversions import Conversions as CV
 from openpilot.common.realtime import DT_CTRL
 from openpilot.selfdrive.car import apply_driver_steer_torque_limits
 from openpilot.selfdrive.car.volkswagen import mlbcan, mqbcan, pqcan
-from openpilot.selfdrive.car.volkswagen.values import CANBUS, PQ_CARS, CarControllerParams
+from openpilot.selfdrive.car.volkswagen.values import CANBUS, MLB_CARS, PQ_CARS, CarControllerParams
 
 VisualAlert = car.CarControl.HUDControl.VisualAlert
 LongCtrlState = car.CarControl.Actuators.LongControlState
@@ -29,7 +29,7 @@ class CarController:
     self.gra_acc_counter_last = None
     self.frame = 0
     self.eps_timer_soft_disable_alert = False
-    self.eps_timer_workaround = True  # For testing, replace with CP.carFingerprint in (PQ_CARS, MLB_CARS)
+    self.eps_timer_workaround = CP.carFingerprint in (PQ_CARS, MLB_CARS)
     self.hca_frame_timer_running = 0
     self.hca_frame_timer_resetting = 0
     self.hca_frame_low_torque = 0
