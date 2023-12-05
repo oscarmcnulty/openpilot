@@ -426,11 +426,9 @@ class CarState(CarStateBase):
     if CP.networkLocation == NetworkLocation.fwdCamera:
       # Radars are here on CANBUS.pt
       # TODO: enable radar, testing on CC only car
-      #signals += MqbExtraSignals.fwd_radar_signals
-      #checks += MqbExtraSignals.fwd_radar_checks
+      messages += MqbExtraSignals.fwd_radar_messages
       if CP.enableBsm:
-        signals += MqbExtraSignals.bsm_radar_signals
-        checks += MqbExtraSignals.bsm_radar_checks
+        messages += MqbExtraSignals.bsm_radar_messages
 
     return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.pt)
 
@@ -446,9 +444,9 @@ class CarState(CarStateBase):
     else:
       # Radars are here on CANBUS.cam
       # TODO: enable radar, testing on CC only car
-      messages += MqbExtraSignals.fwd_radar_checks
+      messages += MqbExtraSignals.fwd_radar_messages
       if CP.enableBsm:
-        messages += MqbExtraSignals.bsm_radar_checks
+        messages += MqbExtraSignals.bsm_radar_messages
 
     return CANParser(DBC[CP.carFingerprint]["pt"], messages, CANBUS.cam)
 
