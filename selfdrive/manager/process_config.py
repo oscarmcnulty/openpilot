@@ -41,13 +41,9 @@ def only_onroad(started: bool, params, CP: car.CarParams) -> bool:
 def only_offroad(started, params, CP: car.CarParams) -> bool:
   return not started
 
-def logging(started, params, CP: car.CarParams) -> bool:
-  run = (not CP.notCar) or not params.get_bool("DisableLogging")
-  return started and run
-
 def is_f3():
   return Params().get_bool("F3")
-    
+
   # ai.flow.app:
   #   command: "am start --user 0 -n ai.flow.android/ai.flow.android.AndroidLauncher"
   #   nowait: true
@@ -69,7 +65,7 @@ procs = [
   #PythonProcess("dmonitoringmodeld", "selfdrive.modeld.dmonitoringmodeld", driverview, enabled=(not PC or WEBCAM)),
 #  NativeProcess("encoderd", "system/loggerd", ["./encoderd"], only_onroad),
 #  NativeProcess("stream_encoderd", "system/loggerd", ["./encoderd", "--stream"], notcar),
-#  NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging),
+  NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging),
   #NativeProcess("modeld", "selfdrive/modeld", ["./modeld"], only_onroad),
   #NativeProcess("mapsd", "selfdrive/navd", ["./mapsd"], only_onroad),
   #PythonProcess("navmodeld", "selfdrive.modeld.navmodeld", only_onroad),
@@ -99,7 +95,7 @@ procs = [
 
   # debug procs
   NativeProcess("bridge", "cereal/messaging", ["./bridge"], notcar),
-  PythonProcess("webjoystick", "tools.bodyteleop.web", notcar),
+  #PythonProcess("webjoystick", "tools.bodyteleop.web", notcar),
 
   #flowpilot processes
   #NativeProcess("modelparsed", "selfdrive/modeld", ["./modelparsed"], only_onroad),
