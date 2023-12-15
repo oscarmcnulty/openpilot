@@ -250,8 +250,8 @@ class Controls:
     if CS.gasPressed:
       self.events.add(EventName.gasPressedOverride)
 
-    if not self.CP.notCar:
-      self.events.add_from_msg(self.sm['driverMonitoringState'].events)
+    #if not self.CP.notCar:
+    #  self.events.add_from_msg(self.sm['driverMonitoringState'].events)
 
     # Add car events, ignore if CAN isn't valid
     if CS.canValid:
