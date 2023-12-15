@@ -67,7 +67,7 @@ class Controls:
                                    'carControl', 'carEvents', 'carParams'])
 
     self.sensor_packets = ["accelerometer", "gyroscope"]
-    self.camera_packets = ["roadCameraState", "driverCameraState", "wideRoadCameraState"]
+    self.camera_packets = ["roadCameraState",]# "driverCameraState", "wideRoadCameraState"]
 
     can_timeout = None if os.environ.get('NO_CAN_TIMEOUT', False) else 20
     self.can_sock = messaging.sub_sock('can', timeout=can_timeout)
@@ -76,6 +76,7 @@ class Controls:
 
     self.params = Params()
     ignore = self.sensor_packets + ['testJoystick']
+    ignore += ['driverMonitoringState']
     if SIMULATION:
       ignore += ['driverCameraState', 'managerState']
     self.sm = messaging.SubMaster(['deviceState', 'pandaStates', 'peripheralState', 'modelV2', 'liveCalibration',
