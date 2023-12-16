@@ -24,7 +24,19 @@ am start -D --user 10 -a android.intent.action.MAIN -n ai.flow.android/ai.flow.a
 adb shell run-as com.termux files/usr/bin/bash -lic 'export PATH=/data/data/com.termux/files/usr/bin:$PATH; export LD_PRELOAD=/data/data/com.termux/files/usr/lib/libtermux-exec.so; bash -i'
 
 # things missing in setup scripts
-tools/install_ubunut_dependencies.sh
+tools/install_ubuntu_dependencies.sh
+
+# pulling logs off device
+#on device
+zip log_20231205.zip .comma/media/0/realdata/2023-12-05--02-55-33--0/*
+#on computer
+adb pull /sdcard/log_20231205.zip /Users/om/Downloads/log_20231205.zip -s 3a516169
+docker ps # get name of dev container
+docker cp /mnt/c/Users/om/Downloads/log_20231205.zip recursing_yalow:/workspaces/
+#on devcontainer
+unzip /workspaces/log_20231205.zip
+poetry run python tools/plotjuggler/juggle.py /workspaces/.comma/media/0/realdata/2023-12-05--02-55-33--0/rlog --can
+./cabana --data_dir ../../../.comma/media/0/realdata/ 2023-12-05--02-55-33--0
 
 apt install qt5-default
 apt install qttools5-dev-tools
