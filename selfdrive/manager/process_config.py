@@ -2,8 +2,8 @@ import os
 
 from cereal import car
 from openpilot.common.params import Params
-from openpilot.system.hardware import PC, TICI
-from openpilot.selfdrive.manager.process import PythonProcess, NativeProcess, DaemonProcess
+from openpilot.system.hardware import PC
+from openpilot.selfdrive.manager.process import PythonProcess, NativeProcess
 
 WEBCAM = os.getenv("USE_WEBCAM") is not None
 
@@ -51,14 +51,13 @@ def is_f3():
   #   platforms: ["android"]
 
 procs = [
-  
   # Athena is interface with athena.comma.ai api
   #DaemonProcess("manage_athenad", "selfdrive.athena.manage_athenad", "AthenadPid"),
 
   #NativeProcess("camerad", "system/camerad", ["./camerad"], driverview),
   NativeProcess("logcatd", "system/logcatd", ["./logcatd"], only_onroad),
   NativeProcess("proclogd", "system/proclogd", ["./proclogd"], only_onroad),
-#  PythonProcess("logmessaged", "system.logmessaged", always_run),
+  PythonProcess("logmessaged", "system.logmessaged", always_run),
   #PythonProcess("micd", "system.micd", iscar),
 #  PythonProcess("timezoned", "system.timezoned", always_run, enabled=not PC),
 
