@@ -14,7 +14,8 @@ export ZMQ_MESSAGING_PROTOCOL="TCP" # TCP, INTER_PROCESS, SHARED_MEMORY
 #export DEVICE_ADDR="127.0.0.1" # connect to external device running flowpilot over same network. useful for livestreaming.
 
 export SIMULATION="1"
-export FINGERPRINT="AUDI Q5 1ST GEN"
+#export FINGERPRINT="AUDI Q5 1ST GEN"
+export FINGERPRINT="HONDA CIVIC 2016"
 export SKIP_FW_QUERY="1"
 
 ## android specific ##
