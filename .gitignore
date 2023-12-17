@@ -9,6 +9,7 @@ tmux-*
 venv/
 .venv/
 .ci_cache
+.cache
 .env
 .clang-format
 .DS_Store
