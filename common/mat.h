@@ -1,7 +1,7 @@
 #pragma once
 
 typedef struct vec3 {
-	float v[3];
+  float v[3];
 } vec3;
 
 typedef struct vec4 {
