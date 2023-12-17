@@ -1,11 +1,9 @@
-import time
-import os
-import time
-import sys, getopt
 import numpy as np
 import threading
 import cv2
-import win32gui, win32ui, win32con, win32api
+import win32gui
+import win32ui
+import win32con
 import ctypes
 from threadUtils import synchronized
 from imUtils import smart_resize, intrinsic_from_fov
@@ -44,7 +42,8 @@ class WindowStreamer():
 
     def searchWindow(self, query):
         result = {}
-        if not self.win_handles: self.updateAvailableWindows()
+        if not self.win_handles:
+            self.updateAvailableWindows()
         for window_name in self.win_handles.keys():
             if query.lower() in window_name.lower():
                 result[window_name] = self.win_handles[window_name]
@@ -58,7 +57,8 @@ class WindowStreamer():
         if self._streaming:
             print("Stream Already Running. Stop It first")
             return False
-        if self.win_handles.get(query, None) is None: return False
+        if self.win_handles.get(query, None) is None:
+            return False
         self._thread = threading.Thread(target=self._runStreamThread, args=(self.win_handles[query], topic))
         self._thread.daemon = True
         self._streaming = True
@@ -111,7 +111,7 @@ class WindowStreamer():
         self.rl.reset()
         while self._streaming:
             self._event.wait()
-            start = time.time()
+            #start = time.time()
             memdc.BitBlt((0, 0), (width, height), srcdc, (dims[0], dims[1]), win32con.SRCCOPY)
             signedIntsArray = bmp.GetBitmapBits(True)
             if len(signedIntsArray) != height*width*4:
@@ -128,7 +128,7 @@ class WindowStreamer():
             msg_frame.intrinsics = self.K.flatten().tolist()
             msg_frame.frameId = frameId
             self.pm.publish({topic:msg_frame.to_segments()[0]})
-            end = time.time()
+            #end = time.time()
             #cv2.imshow('stream', img)
             #cv2.waitKey(1)
             frameId += 1

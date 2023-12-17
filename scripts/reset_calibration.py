@@ -1,5 +1,5 @@
-from common.params import Params
-import cereal.messaging as messaging
+#!/usr/bin/python3
+from openpilot.common.params import Params
 
 p = Params()
 

@@ -1,14 +1,14 @@
 # hard-forked from https://github.com/commaai/openpilot/blob/05b37552f3a38f914af41f44ccc7c633ad152a15/selfdrive/locationd/calibrationd.py
 import cereal.messaging as messaging
 from cereal import log
-from common.realtime import set_realtime_priority
-from common.params import Params
-from common.conversions import Conversions as CV
-from common.transformations.camera import get_view_frame_from_road_frame
-from common.transformations.orientation import rot_from_euler, euler_from_rot
+from openpilot.common.realtime import set_realtime_priority
+from openpilot.common.params import Params
+from openpilot.common.conversions import Conversions as CV
+from openpilot.common.transformations.camera import get_view_frame_from_road_frame
+from openpilot.common.transformations.orientation import rot_from_euler, euler_from_rot
 import numpy as np
 import os
-from openpilot.system.swaglog import cloudlog
+from openpilot.common.swaglog import cloudlog
 
 
 class Calibration:
@@ -175,7 +175,7 @@ class Calibrator:
     def get_msg(self):
         smooth_rpy = self.get_smooth_rpy()
         extrinsic_matrix = get_view_frame_from_road_frame(0, smooth_rpy[1], smooth_rpy[2], model_height)
-        
+
         msg = messaging.new_message('liveCalibration')
         liveCalibration = msg.liveCalibration
 
@@ -210,7 +210,7 @@ def calibrationd_thread(sm=None, pm=None):
             new_rpy = calibrator.handle_cam_odom(sm['cameraOdometry'].trans,
                                                 sm['cameraOdometry'].rot,
                                                 sm['cameraOdometry'].transStd)
-            
+
             if DEBUG and new_rpy is not None:
                 cloudlog.info('got new rpy', new_rpy)
 

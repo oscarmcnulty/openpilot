@@ -1,14 +1,12 @@
-# hard-forked from https://github.com/commaai/openpilot/tree/05b37552f3a38f914af41f44ccc7c633ad152a15/selfdrive/common/realtime.py
 """Utilities for reading real time clocks and keeping soft real time constraints."""
 import gc
-import os
 import time
-import multiprocessing
-from typing import Optional, List
-from common.clock import sec_since_boot
 from collections import deque
-from openpilot.system.swaglog import cloudlog
+from typing import Optional, List, Union
 
+from setproctitle import getproctitle
+
+#from openpilot.system.hardware import PC
 
 # time step for each process
 DT_CTRL = 0.01  # controlsd
@@ -44,23 +42,24 @@ def set_core_affinity(cores: List[int]) -> None:
   #  cloudlog.info("Unable to set core affinity priority")
 
 
-def config_realtime_process(core: int, priority: int) -> None:
+def config_realtime_process(cores: Union[int, List[int]], priority: int) -> None:
   gc.disable()
   set_realtime_priority(priority)
-  set_core_affinity([core])
+  c = cores if isinstance(cores, list) else [cores, ]
+  set_core_affinity(c)
 
 
 class Ratekeeper:
   def __init__(self, rate: float, print_delay_threshold: Optional[float] = 0.0) -> None:
     """Rate in Hz for ratekeeping. print_delay_threshold must be nonnegative."""
     self._interval = 1. / rate
-    self._next_frame_time = sec_since_boot() + self._interval
+    self._next_frame_time = time.monotonic() + self._interval
     self._print_delay_threshold = print_delay_threshold
     self._frame = 0
     self._remaining = 0.0
-    self._process_name =  multiprocessing.current_process().name
+    self._process_name = getproctitle()
     self._dts = deque([self._interval], maxlen=100)
-    self._last_monitor_time = sec_since_boot()
+    self._last_monitor_time = time.monotonic()
 
   @property
   def frame(self) -> int:
@@ -86,11 +85,11 @@ class Ratekeeper:
   # this only monitor the cumulative lag, but does not enforce a rate
   def monitor_time(self) -> bool:
     prev = self._last_monitor_time
-    self._last_monitor_time = sec_since_boot()
+    self._last_monitor_time = time.monotonic()
     self._dts.append(self._last_monitor_time - prev)
 
     lagged = False
-    remaining = self._next_frame_time - sec_since_boot()
+    remaining = self._next_frame_time - time.monotonic()
     self._next_frame_time += self._interval
     if self._print_delay_threshold is not None and remaining < -self._print_delay_threshold:
       print(f"{self._process_name} lagging by {-remaining * 1000:.2f} ms")

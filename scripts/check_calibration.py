@@ -1,4 +1,5 @@
-from common.params import Params
+#!/usr/bin/python3
+from openpilot.common.params import Params
 from cereal.messaging import log
 import numpy as np
 

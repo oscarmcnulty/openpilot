@@ -21,12 +21,12 @@ def is_android():
 def is_android_rooted():
     if not is_android():
         return False
-    try: 
+    try:
         os.listdir("/sys") # TODO: is there any better way ?
         return True
     except PermissionError:
         return False
-        
+
 @cache
 def is_desktop():
     return get_platform() != System.android
@@ -35,6 +35,8 @@ def is_desktop():
 def get_platform():
     system = platform.system()
     if system == System.linux:
-        if is_android(): return System.android
-        else: return System.linux
+        if is_android():
+            return System.android
+        else:
+            return System.linux
     return system

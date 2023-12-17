@@ -1,17 +1,8 @@
 import tkinter
 from tkinter import ttk
 from tkinter import messagebox, StringVar
-import time
 import os
-import time
-import sys, getopt
-import numpy as np
-import threading
-import cv2
-import win32gui, win32ui, win32con, win32api
-import ctypes
 from guiConfig import Config
-from threadUtils import synchronized
 from windowStreamer import WindowStreamer
 
 
@@ -29,7 +20,12 @@ class Player:
         self.search_bar.grid(row=0, column=1, columnspan=columns)
 
         self.search_button_icon = tkinter.PhotoImage(file=self.getResource("search_button.png"))
-        self.search_button = tkinter.Button(window, image=self.search_button_icon, command=self.updateSearch, bg=Config.BG_COLOR, activebackground=Config.ACTIVE_COLOR)
+        self.search_button = tkinter.Button(
+            window,
+            image=self.search_button_icon,
+            command=self.updateSearch,
+            bg=Config.BG_COLOR,
+            activebackground=Config.ACTIVE_COLOR)
         self.search_button.grid(row=0, column=columns+1)
 
         self.topic_label = tkinter.Label(window, text="Topic:", bg=Config.BG_COLOR, fg=Config.TEXT_COLOR, padx=5)
@@ -45,11 +41,21 @@ class Player:
         self.btn_stream.grid(row=1, column=columns//2-10)
 
         self.play_button_icon = tkinter.PhotoImage(file=self.getResource("play_button.png"))
-        self.btn_play=tkinter.Button(window, image=self.play_button_icon, command=self.play, bg=Config.BG_COLOR, activebackground=Config.ACTIVE_COLOR)
+        self.btn_play=tkinter.Button(
+            window,
+            image=self.play_button_icon,
+            command=self.play,
+            bg=Config.BG_COLOR,
+            activebackground=Config.ACTIVE_COLOR)
         self.btn_play.grid(row=1, column=columns//2 - 9)
 
         self.pause_button_icon = tkinter.PhotoImage(file=self.getResource("pause_button.png"))
-        self.btn_pause=tkinter.Button(window, image=self.pause_button_icon, command=self.pause, bg=Config.BG_COLOR, activebackground=Config.ACTIVE_COLOR)
+        self.btn_pause=tkinter.Button(
+            window,
+            image=self.pause_button_icon,
+            command=self.pause,
+            bg=Config.BG_COLOR,
+            activebackground=Config.ACTIVE_COLOR)
         self.btn_pause.grid(row=1, column=columns//2-8)
 
         self.img_on = tkinter.PhotoImage(file = self.getResource("on.png"))
@@ -115,7 +121,8 @@ class Player:
         self.pushErrors(self.streamer.getErrors())
 
     def pushErrors(self, errs):
-        if errs: self.stopStream()
+        if errs:
+            self.stopStream()
         for err in errs:
             messagebox.showerror("Error", err)
 

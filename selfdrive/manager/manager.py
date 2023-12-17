@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import datetime
 import os
 import signal
 import time
@@ -17,7 +16,7 @@ from openpilot.common import system
 from openpilot.common.path import external_android_storage
 import cereal.messaging as messaging
 
-from selfdrive.boardd.set_time import set_time
+from openpilot.selfdrive.boardd.set_time import set_time
 from openpilot.selfdrive.manager.filelock import FileLock
 from openpilot.selfdrive.manager.helpers import unblock_stdout
 from openpilot.selfdrive.manager.process import ensure_running
@@ -25,8 +24,8 @@ from openpilot.selfdrive.manager.process_config import managed_processes
 
 from openpilot.system.version import is_dirty, get_commit, get_version, get_origin, get_short_branch, \
                               terms_version, training_version
-from system.hardware import HARDWARE, PC
-from system.swaglog import cloudlog, add_file_handler
+from openpilot.system.hardware import HARDWARE
+from openpilot.common.swaglog import cloudlog, add_file_handler
 import openpilot.selfdrive.sentry as sentry
 
 os.chdir(BASEDIR)
@@ -44,7 +43,7 @@ UNREGISTERED_DONGLE_ID = "UnregisteredDevice"
 def manager_init() -> None:
 
     set_time(cloudlog)
-    
+
     params = Params()
     params.clear_all(ParamKeyType.CLEAR_ON_MANAGER_START)
 
@@ -58,15 +57,15 @@ def manager_init() -> None:
 
     if params.get_bool("RecordFrontLock"):
         params.put_bool("RecordFront", True)
-    
+
     # android specififc
     if system.is_android():
         if os.environ.get("USE_SNPE", None) == "1":
             params.put_bool("UseSNPE", True)
         else:
             params.put_bool("UseSNPE", False)
-        
-        # android app cannot access internal termux files, need to copy them over 
+
+        # android app cannot access internal termux files, need to copy them over
         # to external storage. rsync is used to copy only modified files.
         internal_assets_dir = os.path.join(BASEDIR, "selfdrive/assets")
         external_android_flowpilot_assets_dir = os.path.join(external_android_storage(), "flowpilot/selfdrive")
@@ -78,8 +77,8 @@ def manager_init() -> None:
             params.put(k, v)
     for k, v in [("CompletedTrainingVersion", "1"), ("HasAcceptedTerms", "1")]:
         params.put(k, v)
-            
-    
+
+
     # is this dashcam?
     if os.getenv("PASSIVE") is not None:
         params.put_bool("Passive", bool(int(os.getenv("PASSIVE", "0"))))
@@ -97,9 +96,9 @@ def manager_init() -> None:
 
     if not is_dirty():
         os.environ['CLEAN'] = '1'
-    
+
     sentry.init(sentry.SentryProject.SELFDRIVE)
-    
+
     cloudlog.bind_global(dongle_id="", version=get_version(), dirty=is_dirty(), # TODO
                         device="todo")
 
@@ -130,7 +129,7 @@ def flowpilot_running():
             p = psutil.Process(pid)
             if p.name() in POSSIBLE_PNAME_MATRIX:
                 ret = True
-    except:
+    except Exception:
         pass
     return ret
 
@@ -182,12 +181,12 @@ def manager_thread() -> None:
                 params.put_bool("IsOffroad", not started)
 
             started_prev = started
-            
+
             ensure_running(managed_processes.values(), started, params=params, CP=sm['carParams'], not_run=ignore)
 
             running_daemons = ["%s%s\u001b[0m" % ("\u001b[32m" if p.proc.is_alive() else "\u001b[31m", p.name)
                     for p in managed_processes.values() if p.proc]
-                    
+
             running_daemons.append("%s%s\u001b[0m" % ("\u001b[32m", "flowinitd"))
             if flowpilot_running():
                 running_daemons.append("%s%s\u001b[0m" % ("\u001b[32m", "modeld camerad sensord ui soundd"))
@@ -212,8 +211,8 @@ def manager_thread() -> None:
                 break
 
             time.sleep(2)
-                
-    except Exception as e:
+
+    except Exception:
         print(traceback.format_exc())
     finally:
         cloudlog.info("cleaning up..")
@@ -221,8 +220,8 @@ def manager_thread() -> None:
         manager_cleanup()
 
 def main():
-    
-    with FileLock("flowinit"): 
+
+    with FileLock("flowinit"):
         prepare_only = os.getenv("PREPAREONLY") is not None
 
         for proc in psutil.process_iter():
@@ -287,4 +286,3 @@ if __name__ == "__main__":
 
     # manual exit because we are forked
     sys.exit(0)
-            

@@ -1,8 +1,8 @@
-import zmq  
+import zmq
 import threading
 from cereal.messaging.utils import get_zmq_socket_path
-from common.params import Params
-from system.swaglog import cloudlog
+from openpilot.common.params import Params
+from openpilot.common.swaglog import cloudlog
 
 sock_get, sock_put, sock_del = None, None, None
 
@@ -15,13 +15,13 @@ class ParamsServer:
         sock_put = zmq.Context().socket(zmq.REP)
         sock_put_path = get_zmq_socket_path("6002")
         cloudlog.info("keyvald sock_put_path: %s", sock_put_path)
-        sock_put.bind(sock_put_path) 
+        sock_put.bind(sock_put_path)
         while not exit_event.is_set():
             key, val = sock_put.recv_multipart()
             cloudlog.debug(f"keyvald PUT: {key} = {val}")
             Params().put(key, val)
             sock_put.send(b"1")
-        
+
     @staticmethod
     def get_thread(exit_event):
         sock_get = zmq.Context().socket(zmq.REP)
@@ -45,8 +45,8 @@ class ParamsServer:
             cloudlog.debug(f"keyvald DEL: {key}")
             Params().remove(key)
             sock_del.send(b"1")
-    
-    @staticmethod 
+
+    @staticmethod
     def start():
         ParamsServer.exit_event.clear()
         if ParamsServer.threads:
@@ -54,26 +54,26 @@ class ParamsServer:
         ParamsServer.threads.append(threading.Thread(target=ParamsServer.put_thread, args=(ParamsServer.exit_event,), daemon=True))
         ParamsServer.threads.append(threading.Thread(target=ParamsServer.get_thread, args=(ParamsServer.exit_event,), daemon=True))
         ParamsServer.threads.append(threading.Thread(target=ParamsServer.delete_thread, args=(ParamsServer.exit_event,), daemon=True))
-        
+
         for thread in ParamsServer.threads:
             thread.start()
-            
-    @staticmethod 
+
+    @staticmethod
     def stop():
         ParamsServer.exit_event.set()
         ParamsServer.threads.clear()
-    
+
     @staticmethod
     def wait():
         for thread in ParamsServer.threads:
             thread.join()
-        
+
 def main():
     try:
         ParamsServer.start()
         ParamsServer.wait()
     except KeyboardInterrupt:
         ParamsServer.stop()
-          
+
 if __name__ == "__main__":
     main()

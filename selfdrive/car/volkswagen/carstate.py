@@ -35,7 +35,7 @@ class CarState(CarStateBase):
       return self.update_pq(pt_cp, cam_cp, ext_cp, trans_type)
 
     ret = car.CarState.new_message()
-    
+
     if self.CP.carFingerprint in MLB_CARS:
       # MLB platform specific signals
       ret.wheelSpeeds = self.get_wheel_speeds(

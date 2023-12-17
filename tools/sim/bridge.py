@@ -11,21 +11,20 @@ import carla  # pylint: disable=import-error
 import numpy as np
 
 import cereal.messaging as messaging
-from common.transformations.camera import eon_f_frame_size, tici_f_frame_size
-from common.transformations.camera import eon_fcam_intrinsics, tici_fcam_intrinsics, tici_ecam_intrinsics
+from openpilot.common.transformations.camera import eon_f_frame_size, tici_f_frame_size
+from openpilot.common.transformations.camera import eon_fcam_intrinsics, tici_fcam_intrinsics, tici_ecam_intrinsics
 from cereal import log
-from common.basedir import BASEDIR
-from common.numpy_fast import clip
-from common.params import Params
-from common.realtime import DT_DMON, Ratekeeper
-from selfdrive.car.honda.values import CruiseButtons
-from tools.sim.lib.can import can_function
+from openpilot.common.numpy_fast import clip
+from openpilot.common.params import Params
+from openpilot.common.realtime import DT_DMON, Ratekeeper
+from openpilot.selfdrive.car.honda.values import CruiseButtons
+from openpilot.tools.sim.lib.can import can_function
 
 REPEAT_COUNTER = 5
 PRINT_DECIMATION = 100
 STEER_RATIO = 15.
 
-pm = messaging.PubMaster(['roadCameraState', 'roadCameraBuffer', 'wideRoadCameraState', 
+pm = messaging.PubMaster(['roadCameraState', 'roadCameraBuffer', 'wideRoadCameraState',
                           'wideRoadCameraBuffer','accelerometer', 'gyroscope', 'can', "gpsLocationExternal"])
 sm = messaging.SubMaster(['carControl', 'controlsState'])
 
@@ -74,7 +73,7 @@ class Camerad:
     self._cam_callback(image, self.frame_road_id, self.frame_road_size, self.road_intrinsics,
                       'roadCameraState', 'roadCameraBuffer')
     self.frame_road_id += 1
-  
+
   def cam_callback_wide_road(self, image):
     self._cam_callback(image, self.frame_wide_id, self.frame_wide_size, self.wide_intrinsics,
                       'wideRoadCameraState', 'wideRoadCameraBuffer')
@@ -331,7 +330,7 @@ class CarlaBridge:
       self._camerad.wide_intrinsics = tici_ecam_intrinsics.flatten().tolist()
       self._carla_objects.append(wide_road_camera)
       if not self.params.get_bool("WideCameraOnly"):
-        road_camera = create_camera(40, tici_f_frame_size, callback=self._camerad.cam_callback_road)  
+        road_camera = create_camera(40, tici_f_frame_size, callback=self._camerad.cam_callback_road)
         self._camerad.frame_road_size = tici_f_frame_size
         self._camerad.road_intrinsics = tici_fcam_intrinsics.flatten().tolist()
         self._carla_objects.append(road_camera)
@@ -359,7 +358,7 @@ class CarlaBridge:
     self._threads.append(threading.Thread(target=fake_driver_monitoring, args=(self._exit_event,)))
     self._threads.append(threading.Thread(target=can_function_runner, args=(vehicle_state, self._exit_event,)))
     for t in self._threads:
-      t.setDaemon(True)    
+      t.setDaemon(True)
       t.start()
 
     # init
@@ -529,16 +528,16 @@ if __name__ == "__main__":
 
   try:
     carla_bridge = CarlaBridge(args)
-  
+
     if args.joystick:
       # start input poll for joystick
-      from tools.sim.lib.manual_ctrl import wheel_poll_thread
+      from openpilot.tools.sim.lib.manual_ctrl import wheel_poll_thread
       threading.Thread(target=wheel_poll_thread, args=(q,), daemon=True).start()
     else:
       # start input poll for keyboard
-      from tools.sim.lib.keyboard_ctrl import keyboard_poll_thread
+      from openpilot.tools.sim.lib.keyboard_ctrl import keyboard_poll_thread
       threading.Thread(target=keyboard_poll_thread, args=(q,), daemon=True).start()
-  
+
     p = carla_bridge.bridge_keep_alive(q, retries=-1)
     p.join()
   finally:

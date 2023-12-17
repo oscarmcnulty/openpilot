@@ -10,16 +10,17 @@ import psutil
 
 import cereal.messaging as messaging
 from cereal import log
+from cereal.services import SERVICE_LIST
 from openpilot.common.dict_helpers import strip_deprecated_keys
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.params import Params
-from openpilot.common.realtime import DT_TRML, sec_since_boot
+from openpilot.common.realtime import DT_TRML
 from openpilot.common.system import is_android, is_android_rooted
 from openpilot.selfdrive.controls.lib.alertmanager import set_offroad_alert
 from openpilot.system.hardware import HARDWARE
 from openpilot.system.loggerd.config import get_available_percent
 from openpilot.selfdrive.statsd import statlog
-from openpilot.system.swaglog import cloudlog
+from openpilot.common.swaglog import cloudlog
 
 ThermalStatus = log.DeviceState.ThermalStatus
 NetworkType = log.DeviceState.NetworkType
@@ -27,29 +28,30 @@ NetworkStrength = log.DeviceState.NetworkStrength
 CURRENT_TAU = 15.   # 15s time constant
 TEMP_TAU = 5.   # 5s time constant
 DISCONNECT_TIMEOUT = 5.  # wait 5 seconds before going offroad after disconnect so you get an alert
-PANDA_STATES_TIMEOUT = int(1000 * 1.5 * DT_TRML)  # 1.5x the expected pandaState frequency
+PANDA_STATES_TIMEOUT = round(1000 / SERVICE_LIST['pandaStates'].frequency * 1.5)  # 1.5x the expected pandaState frequency
 
 ThermalBand = namedtuple("ThermalBand", ['min_temp', 'max_temp'])
-HardwareState = namedtuple("HardwareState", ['network_type', 'network_info', 'network_strength', 'network_stats', 'network_metered', 'nvme_temps', 'modem_temps'])
+HardwareState = namedtuple("HardwareState", ['network_type', 'network_info', 'network_strength', 'network_stats',
+                                             'network_metered', 'nvme_temps', 'modem_temps'])
 
 # List of thermal bands. We will stay within this region as long as we are within the bounds.
 # When exiting the bounds, we'll jump to the lower or higher band. Bands are ordered in the dict.
 THERMAL_BANDS = OrderedDict({
   ThermalStatus.green: ThermalBand(None, 80.0),
   ThermalStatus.yellow: ThermalBand(75.0, 96.0),
-  ThermalStatus.red: ThermalBand(80.0, 107.),
+  ThermalStatus.red: ThermalBand(88.0, 107.),
   ThermalStatus.danger: ThermalBand(94.0, None),
 })
 
 # Override to highest thermal band when offroad and above this temp
-OFFROAD_DANGER_TEMP = 79.5
+OFFROAD_DANGER_TEMP = 75
 
 prev_offroad_states: Dict[str, Tuple[bool, Optional[str]]] = {}
 
 def get_device_state():
   # System utilization
   msg = messaging.new_message("deviceState")
-  
+
   msg.deviceState.freeSpacePercent = get_available_percent(default=100.0)
   msg.deviceState.memoryUsagePercent = int(round(psutil.virtual_memory().percent))
   msg.deviceState.cpuUsagePercent = [int(round(n)) for n in psutil.cpu_percent(percpu=True)]
@@ -60,7 +62,7 @@ def get_device_state():
       battery = psutil.sensors_battery()
       msg.deviceState.batteryPercent = int(battery.percent)
       msg.deviceState.chargingDisabled = not battery.power_plugged
-    except:
+    except Exception:
       pass
 
   # Device Thermals
@@ -71,7 +73,7 @@ def get_device_state():
     msg.deviceState.cpuTempC = [bms.current for bms in temps['battery']]
   else:
     msg.deviceState.cpuTempC = [0.0]*8 # TODO: find a better way to get temps that works across platforms.
-  
+
   # desktops have bad temperature readings causing false positives.
   if not is_android():
     msg.deviceState.cpuTempC = [0.0]*8
@@ -109,7 +111,7 @@ def thermald_thread(end_event, hw_queue):
   all_temp_filter = FirstOrderFilter(0., TEMP_TAU, DT_TRML)
   offroad_temp_filter = FirstOrderFilter(0., TEMP_TAU, DT_TRML)
   should_start_prev = False
-  in_car = False
+  #in_car = False
   engaged_prev = False
 
   params = Params()
@@ -128,20 +130,20 @@ def thermald_thread(end_event, hw_queue):
 
       # Set ignition based on any panda connected
       onroad_conditions["ignition"] = any(ps.ignitionLine or ps.ignitionCan for ps in pandaStates if ps.pandaType != log.PandaState.PandaType.unknown)
-      
-      pandaState = pandaStates[0]
 
-      in_car = pandaState.harnessStatus != log.PandaState.HarnessStatus.notConnected
+      #pandaState = pandaStates[0]
 
-    elif (sec_since_boot() - sm.rcv_time['pandaStates']) > DISCONNECT_TIMEOUT:
+      #in_car = pandaState.harnessStatus != log.PandaState.HarnessStatus.notConnected
+
+    elif (time.monotonic() - sm.rcv_time['pandaStates']) > DISCONNECT_TIMEOUT:
       if onroad_conditions["ignition"]:
         onroad_conditions["ignition"] = False
         cloudlog.error("panda timed out onroad")
 
-    try:
-      last_hw_state = hw_queue.get_nowait()
-    except queue.Empty:
-      pass
+    #try:
+      #last_hw_state = hw_queue.get_nowait()
+    #except queue.Empty:
+    #  pass
 
     # this one is only used for offroad
     temp_sources = [
@@ -158,7 +160,7 @@ def thermald_thread(end_event, hw_queue):
     if fan_controller is not None:
       msg.deviceState.fanSpeedPercentDesired = fan_controller.update(all_comp_temp, onroad_conditions["ignition"])
 
-    is_offroad_for_5_min = (started_ts is None) and ((not started_seen) or (off_ts is None) or (sec_since_boot() - off_ts > 60 * 5))
+    is_offroad_for_5_min = (started_ts is None) and ((not started_seen) or (off_ts is None) or (time.monotonic() - off_ts > 60 * 5))
     if is_offroad_for_5_min and offroad_comp_temp > OFFROAD_DANGER_TEMP:
       # If device is offroad we want to cool down before going onroad
       # since going onroad increases load and can make temps go over 107
@@ -181,7 +183,7 @@ def thermald_thread(end_event, hw_queue):
     startup_conditions["up_to_date"] = params.get("Offroad_ConnectivityNeeded") is None or params.get_bool("DisableUpdates") or params.get_bool("SnoozeUpdate")
     startup_conditions["not_uninstalling"] = not params.get_bool("DoUninstall")
     startup_conditions["accepted_terms"] = params.get_bool("HasAcceptedTerms")
-    startup_conditions["offroad_min_time"] = (not started_seen) or ((off_ts is not None) and (sec_since_boot() - off_ts) > 5.)
+    startup_conditions["offroad_min_time"] = (not started_seen) or ((off_ts is not None) and (time.monotonic() - off_ts) > 5.)
 
     # with 2% left, we killall, otherwise the phone will take a long time to boot
     startup_conditions["free_space"] = msg.deviceState.freeSpacePercent > 2
@@ -196,7 +198,7 @@ def thermald_thread(end_event, hw_queue):
     should_start = all(onroad_conditions.values())
     if started_ts is None:
       should_start = should_start and all(startup_conditions.values())
-    
+
     # for debug
     if not should_start and count % 10 == 0:
       for startup_condition in startup_conditions:
@@ -205,7 +207,7 @@ def thermald_thread(end_event, hw_queue):
       for onroad_condition in onroad_conditions:
         if not onroad_conditions[onroad_condition]:
           print(onroad_condition, onroad_conditions[onroad_condition])
-        
+
     if should_start != should_start_prev or (count == 0):
       params.put_bool("IsOnroad", should_start)
       params.put_bool("IsOffroad", not should_start)
@@ -229,7 +231,7 @@ def thermald_thread(end_event, hw_queue):
     if should_start:
       off_ts = None
       if started_ts is None:
-        started_ts = sec_since_boot()
+        started_ts = time.monotonic()
         started_seen = True
     else:
       if onroad_conditions["ignition"] and (startup_conditions != startup_conditions_prev):
@@ -238,7 +240,7 @@ def thermald_thread(end_event, hw_queue):
 
       started_ts = None
       if off_ts is None:
-        off_ts = sec_since_boot()
+        off_ts = time.monotonic()
 
     # TODO: implement this
     # Offroad power monitoring

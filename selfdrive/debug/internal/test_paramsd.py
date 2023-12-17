@@ -11,11 +11,11 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-from selfdrive.car.honda.interface import CarInterface
-from selfdrive.car.honda.values import CAR
-from selfdrive.controls.lib.vehicle_model import VehicleModel, create_dyn_state_matrices
-from selfdrive.locationd.models.car_kf import CarKalman, ObservationKind, States
-from selfdrive.locationd.models.constants import GENERATED_DIR
+from openpilot.selfdrive.car.honda.interface import CarInterface
+from openpilot.selfdrive.car.honda.values import CAR
+from openpilot.selfdrive.controls.lib.vehicle_model import VehicleModel, create_dyn_state_matrices
+from openpilot.selfdrive.locationd.models.car_kf import CarKalman, ObservationKind, States
+from openpilot.selfdrive.locationd.models.constants import GENERATED_DIR
 
 T_SIM = 3 * 60  # s
 DT = 0.01
@@ -67,15 +67,15 @@ for i, t in tqdm(list(enumerate(ts))):
   ao = angle_offsets[i]
 
   A, B = create_dyn_state_matrices(u, VM)
-    
+
   state += DT * (A.dot(state) + B.dot(np.atleast_2d([sa + ao, 0]).T))
 
   x += u * math.cos(psi) * DT
   y += (float(state[0]) * math.sin(psi) + u * math.sin(psi)) * DT
   psi += float(state[1]) * DT
-  
-  kf.predict_and_observe(t, ObservationKind.ROAD_FRAME_YAW_RATE, 
-                            [float(state[1])], 
+
+  kf.predict_and_observe(t, ObservationKind.ROAD_FRAME_YAW_RATE,
+                            [float(state[1])],
                             np.array([np.atleast_2d(yaw_rate_std**2)]))
 
   kf.predict_and_observe(t, ObservationKind.ROAD_FRAME_X_SPEED, [[u]])

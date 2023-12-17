@@ -9,7 +9,7 @@ from typing import NoReturn, Union, List, Dict
 
 from openpilot.common.params import Params
 from cereal.messaging import SubMaster
-from openpilot.system.swaglog import cloudlog
+from openpilot.common.swaglog import cloudlog
 from openpilot.common.system import get_platform
 from openpilot.common.file_helpers import atomic_write_in_dir
 from openpilot.system.version import get_normalized_origin, get_short_branch, get_short_version, is_dirty
