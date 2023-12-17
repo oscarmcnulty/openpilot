@@ -1,6 +1,10 @@
 # Dev commands
 
 ```sh
+# code server startup
+ssh OnePlus-7T.lan "sudo login-flowpilot-root code-server"
+ssh -N -L 8035:localhost:8035 OnePlus-7T.lan 
+
 # Install to phone over wifi 
 adb connect OnePlus-7T.lan
 adb install -r android/build/outputs/apk/debug/android-debug.apk
