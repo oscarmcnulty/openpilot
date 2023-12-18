@@ -55,16 +55,16 @@ procs = [
   #DaemonProcess("manage_athenad", "selfdrive.athena.manage_athenad", "AthenadPid"),
 
   #NativeProcess("camerad", "system/camerad", ["./camerad"], driverview),
-  NativeProcess("logcatd", "system/logcatd", ["./logcatd"], only_onroad),
-  NativeProcess("proclogd", "system/proclogd", ["./proclogd"], only_onroad),
-  PythonProcess("logmessaged", "system.logmessaged", always_run),
+  NativeProcess("logcatd", "system/logcatd", ["./logcatd"], only_onroad), # Reads systemd logs and publishes to cereal `androidLog`
+  NativeProcess("proclogd", "system/proclogd", ["./proclogd"], only_onroad), # reads processes and CPU usage and publishes to cereal `procLog`
+  #PythonProcess("logmessaged", "system.logmessaged", always_run), # takes swaglog messages and publishes them to cereal `logMessage` and `errorLogMessage`
   #PythonProcess("micd", "system.micd", iscar),
 #  PythonProcess("timezoned", "system.timezoned", always_run, enabled=not PC),
 
   #PythonProcess("dmonitoringmodeld", "selfdrive.modeld.dmonitoringmodeld", driverview, enabled=(not PC or WEBCAM)),
 #  NativeProcess("encoderd", "system/loggerd", ["./encoderd"], only_onroad),
 #  NativeProcess("stream_encoderd", "system/loggerd", ["./encoderd", "--stream"], notcar),
-  NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging),
+  NativeProcess("loggerd", "system/loggerd", ["./loggerd"], logging), # consumes all cereal sockets and writes them to qlog
   #NativeProcess("modeld", "selfdrive/modeld", ["./modeld"], only_onroad),
   #NativeProcess("mapsd", "selfdrive/navd", ["./mapsd"], only_onroad),
   #PythonProcess("navmodeld", "selfdrive.modeld.navmodeld", only_onroad),
@@ -76,7 +76,7 @@ procs = [
   PythonProcess("calibrationd", "selfdrive.locationd.calibrationd", only_onroad),
   PythonProcess("torqued", "selfdrive.locationd.torqued", only_onroad),
   PythonProcess("controlsd", "selfdrive.controls.controlsd", only_onroad),
-  PythonProcess("deleter", "system.loggerd.deleter", always_run),
+  PythonProcess("deleter", "system.loggerd.deleter", always_run), # cleans up segments when storage hits a minimum level
   #PythonProcess("dmonitoringd", "selfdrive.monitoring.dmonitoringd", driverview, enabled=(not PC or WEBCAM)),
 #  PythonProcess("qcomgpsd", "system.qcomgpsd.qcomgpsd", qcomgps, enabled=TICI),
   #PythonProcess("navd", "selfdrive.navd.navd", only_onroad),
@@ -87,9 +87,9 @@ procs = [
   PythonProcess("plannerd", "selfdrive.controls.plannerd", only_onroad),
   PythonProcess("radard", "selfdrive.controls.radard", only_onroad),
   PythonProcess("thermald", "selfdrive.thermald.thermald", always_run),
-  PythonProcess("tombstoned", "selfdrive.tombstoned", always_run, enabled=not PC),
-  PythonProcess("updated", "selfdrive.updated", only_offroad, enabled=not PC),
-  PythonProcess("uploader", "system.loggerd.uploader", always_run),
+  #PythonProcess("tombstoned", "selfdrive.tombstoned", always_run, enabled=not PC),
+  #PythonProcess("updated", "selfdrive.updated", only_offroad, enabled=not PC),
+  #PythonProcess("uploader", "system.loggerd.uploader", always_run), $ uploads logs and crashes to api.commadotai.com
   PythonProcess("statsd", "selfdrive.statsd", always_run),
 
   # debug procs

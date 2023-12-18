@@ -266,9 +266,11 @@ if __name__ == "__main__":
     unblock_stdout()
 
     try:
+        # Log all cloud logs to file
+        add_file_handler(cloudlog)
         main()
     except Exception:
-        add_file_handler(cloudlog)
+        #add_file_handler(cloudlog)
         cloudlog.exception("Manager failed to start")
 
         #try:

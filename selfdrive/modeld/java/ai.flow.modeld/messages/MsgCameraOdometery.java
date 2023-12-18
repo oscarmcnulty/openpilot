@@ -46,7 +46,7 @@ public class MsgCameraOdometery extends MessageBase {
             parsed.rot[i] = rot.get(i);
             parsed.rotStd[i] = rotStd.get(i);
             parsed.trans[i] = trans.get(i);
-            parsed.trans[i] = transStd.get(i);
+            parsed.transStd[i] = transStd.get(i);
         }
     }
 
@@ -59,7 +59,7 @@ public class MsgCameraOdometery extends MessageBase {
             rot.set(i, parsed.rot[i]);
             rotStd.set(i, parsed.rotStd[i]);
             trans.set(i, parsed.trans[i]);
-            transStd.set(i, parsed.trans[i]);
+            transStd.set(i, parsed.transStd[i]);
         }
     }
 }

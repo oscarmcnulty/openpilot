@@ -31,16 +31,19 @@ adb shell run-as com.termux files/usr/bin/bash -lic 'export PATH=/data/data/com.
 tools/install_ubuntu_dependencies.sh
 
 # pulling logs off device
-#on device
-zip log_20231205.zip .comma/media/0/realdata/2023-12-05--02-55-33--0/*
-#on computer
-adb pull /sdcard/log_20231205.zip /Users/om/Downloads/log_20231205.zip -s 3a516169
+rm /sdcard/openpilot_log.zip
+zip -r /sdcard/openpilot_log.zip ~/.comma/media/0/realdata/2023-12-18--01-34-46--*/qlog
+#on powershell
+adb -s 3a516169 pull /sdcard/openpilot_log.zip /Users/om/Downloads/openpilot_log.zip 
+#on wsl
 docker ps # get name of dev container
-docker cp /mnt/c/Users/om/Downloads/log_20231205.zip recursing_yalow:/workspaces/
+docker cp /mnt/c/Users/om/Downloads/openpilot_log.zip recursing_yalow:/workspaces/
 #on devcontainer
-unzip /workspaces/log_20231205.zip
-poetry run python tools/plotjuggler/juggle.py /workspaces/.comma/media/0/realdata/2023-12-05--02-55-33--0/rlog --can
-./cabana --data_dir ../../../.comma/media/0/realdata/ 2023-12-05--02-55-33--0
+cd /workspaces
+unzip /workspaces/openpilot_log.zip
+poetry run python tools/plotjuggler/juggle.py /workspaces/root/.comma/media/0/realdata/2023-12-17--03-46-26--8/qlog
+cd /workspaces/openpilot/tools/cabana
+./cabana --no-vipc --data_dir ../../../.comma/media/0/realdata/ --dbc ../../opendbc/vw_mlb.dbc 2023-12-17--03-46-26
 
 apt install qt5-default
 apt install qttools5-dev-tools
