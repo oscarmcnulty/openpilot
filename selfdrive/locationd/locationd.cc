@@ -270,7 +270,7 @@ void Localizer::handle_sensor(double current_time, const cereal::SensorEventData
       this->observation_values_invalid["gyroscope"] *= DECAY;
     } else {
       if (!gyro_valid){
-        LOGE("Gyro yaw rate of %f.4rad/s does not match camera odometry yaw rate of %f.4", (meas[2] - gyro_bias[2]), this->camodo_yawrate_distribution[0])
+        LOGE("Gyro yaw rate of %f rad/s does not match camera odometry yaw rate of %f", (meas[2] - gyro_bias[2]), this->camodo_yawrate_distribution[0])
       } else {
         LOGE("Invalid gyroscope reading")
       }
