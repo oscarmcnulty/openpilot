@@ -171,7 +171,7 @@ public class Parser {
             y_arr[i] = data[i*columns + 1 + column_offset];
             z_arr[i] = data[i*columns + 2 + column_offset];
 
-            if (fill_std) 
+            if (fill_std)
             {
                 yStd_arr[i] = data[columns * (TRAJECTORY_SIZE + i) + 1 + column_offset];
                 zStd_arr[i] = data[columns * (TRAJECTORY_SIZE + i) + 2 + column_offset];
@@ -289,7 +289,7 @@ public class Parser {
         }
     }
 
-    
+
     public void fill_sigmoid(float[] input, float[] output, int offset, int len, int stride)
     {
         for (int i=0; i<len; i++)
@@ -374,7 +374,7 @@ public class Parser {
         fillXYZT(parsed.orientation, best_plan, PLAN_MHP_COLUMNS, 9, plan_t_arr, false);
         fillXYZT(parsed.orientationRate, best_plan, PLAN_MHP_COLUMNS, 12, plan_t_arr, false);
 
-        for(int i=0; i < 4; i++) 
+        for(int i=0; i < 4; i++)
         {
             fillXYZT(laneLines.get(i), outs, LL_IDX + i*TRAJECTORY_SIZE*2, 2, -1, plan_t_arr, false);
             laneLineProbs[i] = sigmoid(outs[LL_PROB_IDX + i*2+1]);
@@ -408,10 +408,11 @@ public class Parser {
             rotStd[i] = (float) Math.exp(rotStd[i]);
         }
 
-        for(int j=0; j < rotStd.length; j++){
-            rotStd[j] *= Math.PI / 180.0;
-            rot[j] *= Math.PI / 180.0;
-        }
+        // Not sure why this was here. Original doesn't seem to have degree->rad transform https://github.com/commaai/openpilot/blob/v0.8.9/selfdrive/modeld/models/driving.cc#L355
+        //for(int j=0; j < rotStd.length; j++){
+        //    rotStd[j] *= Math.PI / 180.0;
+        //    rot[j] *= Math.PI / 180.0;
+        //}
 
         return parsed;
     }

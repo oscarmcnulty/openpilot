@@ -50,9 +50,9 @@ public class MsgCameraOdometery extends MessageBase {
         }
     }
 
-    public void fill(ParsedOutputs parsed, long timestamp, long frameId) {
+    public void fill(ParsedOutputs parsed, long timestamp, int frameId) {
         odometry.setTimestampEof(timestamp);
-        odometry.setTimestampEof(frameId);
+        odometry.setFrameId(frameId);
 
         for (int i = 0; i < 3; i++) {
 
