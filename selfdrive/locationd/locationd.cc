@@ -245,6 +245,7 @@ void Localizer::handle_sensor(double current_time, const cereal::SensorEventData
     this->observation_timings_invalid = true;
     return;
   } else if (!this->is_timestamp_valid(sensor_time)) {
+    LOGE("Sensor timestamp is older than the max rewind threshold of the filter");
     this->observation_timings_invalid = true;
     return;
   }
@@ -268,6 +269,7 @@ void Localizer::handle_sensor(double current_time, const cereal::SensorEventData
       this->kf->predict_and_observe(sensor_time, OBSERVATION_PHONE_GYRO, { meas });
       this->observation_values_invalid["gyroscope"] *= DECAY;
     } else {
+      LOGE("Invalid gyroscope reading")
       this->observation_values_invalid["gyroscope"] += 1.0;
     }
   }
@@ -286,6 +288,7 @@ void Localizer::handle_sensor(double current_time, const cereal::SensorEventData
       this->kf->predict_and_observe(sensor_time, OBSERVATION_PHONE_ACCEL, { meas });
       this->observation_values_invalid["accelerometer"] *= DECAY;
     } else {
+      LOGE("Invalid accelerometer reading")
       this->observation_values_invalid["accelerometer"] += 1.0;
     }
   }
@@ -456,11 +459,13 @@ void Localizer::handle_cam_odo(double current_time, const cereal::CameraOdometry
   VectorXd trans_device = this->device_from_calib * floatlist2vector(log.getTrans());
 
   if (!this->is_timestamp_valid(current_time)) {
+    LOGE("Camera odometry timestamp is older than the max rewind threshold of the filter");
     this->observation_timings_invalid = true;
     return;
   }
 
   if ((rot_device.norm() > ROTATION_SANITY_CHECK) || (trans_device.norm() > TRANS_SANITY_CHECK)) {
+    LOGE("Invalid cameraOdometry reading, rotation or translation too large")
     this->observation_values_invalid["cameraOdometry"] += 1.0;
     return;
   }
@@ -469,11 +474,13 @@ void Localizer::handle_cam_odo(double current_time, const cereal::CameraOdometry
   VectorXd trans_calib_std = floatlist2vector(log.getTransStd());
 
   if ((rot_calib_std.minCoeff() <= MIN_STD_SANITY_CHECK) || (trans_calib_std.minCoeff() <= MIN_STD_SANITY_CHECK)) {
+    LOGE("Invalid cameraOdometry reading, rotation or translation std error too small")
     this->observation_values_invalid["cameraOdometry"] += 1.0;
     return;
   }
 
   if ((rot_calib_std.norm() > 10 * ROTATION_SANITY_CHECK) || (trans_calib_std.norm() > 10 * TRANS_SANITY_CHECK)) {
+    LOGE("Invalid cameraOdometry reading, rotation or translation std error too large")
     this->observation_values_invalid["cameraOdometry"] += 1.0;
     return;
   }
@@ -496,6 +503,7 @@ void Localizer::handle_cam_odo(double current_time, const cereal::CameraOdometry
 
 void Localizer::handle_live_calib(double current_time, const cereal::LiveCalibrationData::Reader& log) {
   if (!this->is_timestamp_valid(current_time)) {
+    LOGE("Live calibration timestamp is older than the max rewind threshold of the filter");
     this->observation_timings_invalid = true;
     return;
   }
@@ -503,6 +511,7 @@ void Localizer::handle_live_calib(double current_time, const cereal::LiveCalibra
   if (log.getRpyCalib().size() > 0) {
     auto live_calib = floatlist2vector(log.getRpyCalib());
     if ((live_calib.minCoeff() < -CALIB_RPY_SANITY_CHECK) || (live_calib.maxCoeff() > CALIB_RPY_SANITY_CHECK)) {
+      LOGE("Invalid liveCalibration reading, magnitude of rpyCalib is too large")
       this->observation_values_invalid["liveCalibration"] += 1.0;
       return;
     }
