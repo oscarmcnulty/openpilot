@@ -1,9 +1,10 @@
 package ai.flow.modeld.messages;
 
+import org.capnproto.PrimitiveList;
+
 import ai.flow.common.transformations.Camera;
 import ai.flow.definitions.Definitions;
 import ai.flow.definitions.MessageBase;
-import org.capnproto.PrimitiveList;
 
 public class MsgFrameData extends MessageBase {
 

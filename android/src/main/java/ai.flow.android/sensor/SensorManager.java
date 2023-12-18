@@ -1,5 +1,6 @@
 package ai.flow.android.sensor;
 
+import ai.flow.definitions.Definitions;
 import ai.flow.sensor.messages.MsgSensorEvent;
 import ai.flow.sensor.SensorInterface;
 import android.content.Context;
@@ -32,6 +33,11 @@ public class SensorManager extends SensorInterface implements Runnable{
     public SensorEventListener listenerGyroscope;
     PrimitiveList.Float.Builder gyroVec3 = msgGyroscope.sensorEvent.getGyro().getV();
 
+    /**
+     *
+     * @param context
+     * @param frequency sensor sample frequency in Hz
+     */
     public SensorManager(Context context, int frequency) {
         ph = new ZMQPubHandler();
         ph.createPublishers(Arrays.asList("accelerometer", "gyroscope"));
@@ -42,12 +48,24 @@ public class SensorManager extends SensorInterface implements Runnable{
         sensorAccelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
         sensorGyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 
+        msgAcceleration.sensorEvent.setSensor(1); // SENSOR_ACCELEROMETER
+        msgAcceleration.sensorEvent.setType(1); // SENSOR_TYPE_ACCELEROMETER
+        msgAcceleration.sensorEvent.setSource(Definitions.SensorEventData.SensorSource.ANDROID);
+
+        msgGyroscope.sensorEvent.setSensor(5); // SENSOR_GYRO_UNCALIBRATED
+        msgGyroscope.sensorEvent.setType(16);  // SENSOR_TYPE_GYROSCOPE_UNCALIBRATED
+        msgGyroscope.sensorEvent.setSource(Definitions.SensorEventData.SensorSource.ANDROID);
+
+
         listenerAccelerometer = new SensorEventListener() {
             @Override
             public void onSensorChanged(SensorEvent sensorEvent) {
                 accVec3.set(0, sensorEvent.values[0]);
                 accVec3.set(1, sensorEvent.values[1]);
                 accVec3.set(2, sensorEvent.values[2]);
+                msgAcceleration.sensorEvent.getAcceleration().getStatus();
+                // this is compared to time when .serialize() is called
+                msgAcceleration.sensorEvent.setTimestamp(System.nanoTime());
             }
             @Override
             public void onAccuracyChanged(Sensor sensor, int i) {
@@ -60,6 +78,8 @@ public class SensorManager extends SensorInterface implements Runnable{
                 gyroVec3.set(0, sensorEvent.values[0]);
                 gyroVec3.set(1, sensorEvent.values[1]);
                 gyroVec3.set(2, sensorEvent.values[2]);
+                // this is compared to time when .serialize() is called
+                msgGyroscope.sensorEvent.setTimestamp(System.nanoTime());
             }
             @Override
             public void onAccuracyChanged(Sensor sensor, int i) {
