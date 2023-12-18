@@ -46,7 +46,7 @@ public class SensorManager extends SensorInterface implements Runnable{
 
         sensorManager = (android.hardware.SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
         sensorAccelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-        sensorGyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        sensorGyroscope = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE_UNCALIBRATED);
 
         msgAcceleration.sensorEvent.setSensor(1); // SENSOR_ACCELEROMETER
         msgAcceleration.sensorEvent.setType(1); // SENSOR_TYPE_ACCELEROMETER
