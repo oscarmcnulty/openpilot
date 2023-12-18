@@ -1,13 +1,10 @@
 package ai.flow.android.sensor;
 
-import ai.flow.common.ParamsInterface;
-import ai.flow.common.Path;
-import ai.flow.common.transformations.Camera;
-import ai.flow.definitions.Definitions;
-import ai.flow.definitions.Custom;
-import ai.flow.modeld.messages.MsgFrameData;
-import ai.flow.sensor.SensorInterface;
-import ai.flow.sensor.messages.MsgFrameBuffer;
+import static ai.flow.android.sensor.Utils.fillYUVBuffer;
+import static ai.flow.common.BufferUtils.byteToFloat;
+import static ai.flow.common.transformations.Camera.CAMERA_TYPE_ROAD;
+import static ai.flow.common.transformations.Camera.fcamIntrinsicParam;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -17,17 +14,23 @@ import android.os.Build;
 import android.util.Range;
 import android.util.Size;
 import android.view.Surface;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 import androidx.camera.camera2.interop.Camera2Interop;
-import androidx.camera.core.*;
+import androidx.camera.core.CameraControl;
+import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ImageAnalysis;
+import androidx.camera.core.ImageProxy;
+import androidx.camera.core.VideoCapture;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+
 import com.google.common.util.concurrent.ListenableFuture;
-import messaging.ZMQPubHandler;
+
 import org.capnproto.PrimitiveList;
 import org.opencv.core.Core;
 
@@ -40,10 +43,14 @@ import java.util.Date;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutionException;
 
-import static ai.flow.android.sensor.Utils.fillYUVBuffer;
-import static ai.flow.common.BufferUtils.byteToFloat;
-import static ai.flow.common.transformations.Camera.CAMERA_TYPE_ROAD;
-import static ai.flow.common.transformations.Camera.fcamIntrinsicParam;
+import ai.flow.common.ParamsInterface;
+import ai.flow.common.Path;
+import ai.flow.common.transformations.Camera;
+import ai.flow.definitions.Custom;
+import ai.flow.modeld.messages.MsgFrameData;
+import ai.flow.sensor.SensorInterface;
+import ai.flow.sensor.messages.MsgFrameBuffer;
+import messaging.ZMQPubHandler;
 
 public class CameraManager extends SensorInterface {
 
