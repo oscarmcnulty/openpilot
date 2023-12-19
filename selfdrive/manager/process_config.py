@@ -2,7 +2,6 @@ import os
 
 from cereal import car
 from openpilot.common.params import Params
-from openpilot.system.hardware import PC
 from openpilot.selfdrive.manager.process import PythonProcess, NativeProcess
 
 WEBCAM = os.getenv("USE_WEBCAM") is not None
@@ -97,7 +96,7 @@ procs = [
   #PythonProcess("webjoystick", "tools.bodyteleop.web", notcar),
 
   #flowpilot processes
-  #NativeProcess("modelparsed", "selfdrive/modeld", ["./modelparsed"], only_onroad),
+  NativeProcess("modelparsed", "selfdrive/modeld", ["./modelparsed"], only_onroad),
   PythonProcess("keyvald", "selfdrive.keyvald", always_run)
   #NativeProcess("flowpilot", "", ["./gradlew", "desktop:run"], always_run, enabled=PC),
 ]
