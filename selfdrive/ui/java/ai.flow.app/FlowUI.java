@@ -8,6 +8,7 @@ import ai.flow.modeld.ModelExecutor;
 import ai.flow.sensor.SensorInterface;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
@@ -24,6 +25,7 @@ import java.util.Map;
 public class FlowUI extends Game {
     final String API_ENDPOINT = "https://staging-api.flowdrive.ai";
     final String AUTH_ENDPOINT = API_ENDPOINT + "/auth";
+    final boolean RECORD_VIDEOS = false;
     public ShapeRenderer shapeRenderer;
     public BitmapFont font;
     public Skin skin;
@@ -38,6 +40,8 @@ public class FlowUI extends Game {
     public boolean isOnRoad = false;
     public boolean prevIsOnRoad = false;
     public Thread updateOnroadThread;
+    Sound engageSound, disengageSound, promptSound, promptDistractedSound,
+            refuseSound, warningImmediate, warningSoft;
     public HardwareManager hardwareManager;
 
     public FlowUI(Launcher launcher, HardwareManager hardwareManager, int pid) {
@@ -49,8 +53,6 @@ public class FlowUI extends Game {
 
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
         Nd4j.zeros(1); // init nd4j (any better ways?)
-
-        params.deleteKey("F3");
 
         updateOnroadThread = new Thread(new Runnable() {
             @Override
@@ -65,10 +67,8 @@ public class FlowUI extends Game {
                     if (prevIsOnRoad != isOnRoad) {
                         if (!isOnRoad) {
                             modelExecutor.stop();
-                            sensors.get("roadCamera").record(false);
                         } else {
                             modelExecutor.start();
-                            sensors.get("roadCamera").record(true);
                         }
                     }
                     prevIsOnRoad = isOnRoad;
@@ -92,12 +92,23 @@ public class FlowUI extends Game {
     public void loadInternalFonts(Skin skin){
         loadFont("selfdrive/assets/fonts/Inter-Regular.ttf", "default-font-16", 16, skin);
         loadFont("selfdrive/assets/fonts/Inter-Regular.ttf", "default-font-20", 20, skin);
+        loadFont("selfdrive/assets/fonts/Inter-Regular.ttf", "default-font-25", 25, skin);
         loadFont("selfdrive/assets/fonts/Inter-Regular.ttf", "default-font-30", 30, skin);
         loadFont("selfdrive/assets/fonts/Inter-Regular.ttf", "default-font", 36, skin);
         loadFont("selfdrive/assets/fonts/Inter-Regular.ttf", "default-font-64", 64, skin);
         loadFont("selfdrive/assets/fonts/opensans_bold.ttf", "default-font-bold", 20, skin);
         loadFont("selfdrive/assets/fonts/opensans_bold.ttf", "default-font-bold-med", 45, skin);
         loadFont("selfdrive/assets/fonts/opensans_bold.ttf", "default-font-bold-large", 100, skin);
+    }
+
+    public void loadSounds() {
+        engageSound = Gdx.audio.newSound(Gdx.files.absolute(Path.internal("selfdrive/assets/sounds/engage.wav")));
+        disengageSound = Gdx.audio.newSound(Gdx.files.absolute(Path.internal("selfdrive/assets/sounds/disengage.wav")));
+        promptSound = Gdx.audio.newSound(Gdx.files.absolute(Path.internal("selfdrive/assets/sounds/prompt.wav")));
+        promptDistractedSound = Gdx.audio.newSound(Gdx.files.absolute(Path.internal("selfdrive/assets/sounds/prompt_distracted.wav")));
+        refuseSound = Gdx.audio.newSound(Gdx.files.absolute(Path.internal("selfdrive/assets/sounds/refuse.wav")));
+        warningImmediate = Gdx.audio.newSound(Gdx.files.absolute(Path.internal("selfdrive/assets/sounds/warning_immediate.wav")));
+        warningSoft = Gdx.audio.newSound(Gdx.files.absolute(Path.internal("selfdrive/assets/sounds/warning_soft.wav")));
     }
 
     public static TextButton getPaddedButton(String text, Skin skin, String styleName, int padding){
@@ -118,22 +129,27 @@ public class FlowUI extends Game {
 
         updateOnroadThread.start();
 
+        if (Gdx.gl != null) { // else headless mode
+            shapeRenderer = new ShapeRenderer();
+            font = new BitmapFont();
+            font.setColor(0f, 1f, 0f, 1f);
+            font.getData().setScale(5);
+            skin = new Skin(new TextureAtlas(Gdx.files.absolute(Path.internal("selfdrive/assets/skins/uiskin.atlas"))));
+            for (Texture texture: skin.getAtlas().getTextures())
+                texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+            loadInternalFonts(skin);
+            loadSounds();
+            skin.load(Gdx.files.absolute(Path.internal("selfdrive/assets/skins/uiskin.json")));
 
-        shapeRenderer = new ShapeRenderer();
-        font = new BitmapFont();
-        font.setColor(0f, 1f, 0f, 1f);
-        font.getData().setScale(2);
-        skin = new Skin(new TextureAtlas(Gdx.files.absolute(Path.internal("selfdrive/assets/skins/uiskin.atlas"))));
-        for (Texture texture: skin.getAtlas().getTextures())
-            texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
-        loadInternalFonts(skin);
-        skin.load(Gdx.files.absolute(Path.internal("selfdrive/assets/skins/uiskin.json")));
+            settingsScreen = new SettingsScreen(this);
+            onRoadScreen = new OnRoadScreen(this);
 
-        settingsScreen = new SettingsScreen(this);
-        onRoadScreen = new OnRoadScreen(this);
-
-        setScreen(new SetUpScreen(this));
-
+            setScreen(new SetUpScreen(this));
+        }
+        else{
+            launcher.startSensorD();
+            launcher.startAllD();
+        }
     }
 
     @Override

@@ -1,6 +1,8 @@
 package ai.flow.sensor.camera;
 
 import ai.flow.common.ParamsInterface;
+import ai.flow.common.transformations.Camera;
+import ai.flow.common.transformations.RGB2YUV;
 import ai.flow.definitions.Custom;
 import ai.flow.definitions.Definitions;
 import ai.flow.modeld.messages.MsgFrameData;
@@ -23,13 +25,13 @@ import java.util.Arrays;
 import static ai.flow.common.BufferUtils.bufferFromAddress;
 import static ai.flow.common.BufferUtils.byteToFloat;
 import static ai.flow.common.transformations.Camera.CAMERA_TYPE_ROAD;
-import static ai.flow.common.transformations.Camera.fcamIntrinsicParam;
 
 public class CameraManager extends SensorInterface implements Runnable {
     public Thread thread;
     public boolean stopped = false;
     public boolean exit = false;
     public boolean initialized = false;
+    private final boolean useYUV = true;
     public VideoCapture capture;
     public static ZMQPubHandler ph = new ZMQPubHandler();
     public long deltaTime;
@@ -38,33 +40,35 @@ public class CameraManager extends SensorInterface implements Runnable {
     public MsgFrameData msgFrameData = new MsgFrameData(CAMERA_TYPE_ROAD);
     public MsgFrameBuffer msgFrameBuffer;
     public Mat frame, frameProcessed, frameCrop, framePadded;
-    public PrimitiveList.Float.Builder K = msgFrameData.intrinsics;
     public int frameID = 0;
     public ParamsInterface params = ParamsInterface.getInstance();
-    public String frameDataTopic;
-    public String frameBufferTopic;
-    public String cameraParamName;
-    ByteBuffer rgbBuffer;
+    public String frameDataTopic = null;
+    public String frameBufferTopic = null;
+    public String cameraParamName = null;
+    public RGB2YUV rgb2yuv;
+    ByteBuffer yuvBuffer, rgbBuffer;
 
-    public void setIntrinsics(float[] intrinsics){
-        assert (intrinsics.length == 9) : "invalid intrinsic matrix length";
-        for (int i=0; i<intrinsics.length; i++) {
-            K.set(i, intrinsics[i]);
-        }
-    }
-
-    public CameraManager(int frequency, String videoSrc, int frameWidth, int frameHeight) {
+    public CameraManager(int cameraType, int frequency, String videoSrc, int frameWidth, int frameHeight) {
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
 
+        if (cameraType == Camera.CAMERA_TYPE_WIDE){
+            frameDataTopic = "wideRoadCameraState";
+            frameBufferTopic = "wideRoadCameraBuffer";
+            cameraParamName = "WideCameraMatrix";
+        } else if (cameraType == CAMERA_TYPE_ROAD) {
+            frameDataTopic = "roadCameraState";
+            frameBufferTopic = "roadCameraBuffer";
+            cameraParamName = "CameraMatrix";
+        }
 
-        frameDataTopic = "roadCameraState";
-        frameBufferTopic = "roadCameraBuffer";
-        cameraParamName = fcamIntrinsicParam;
-
-        msgFrameBuffer = new MsgFrameBuffer(frameWidth*frameHeight*3/2, CAMERA_TYPE_ROAD);
+        msgFrameBuffer = new MsgFrameBuffer(frameWidth*frameHeight*3/2, cameraType);
 
         this.defaultFrameWidth = frameWidth;
         this.defaultFrameHeight = frameHeight;
+
+        if (useYUV) {
+            rgb2yuv = new RGB2YUV(null, null, frameHeight, frameWidth);
+        }
 
         // start capturing from video / webcam or ip cam.
         if (videoSrc == null)
@@ -86,10 +90,14 @@ public class CameraManager extends SensorInterface implements Runnable {
         frame = new Mat();
         framePadded = new Mat();
         frameProcessed = new Mat(defaultFrameHeight, defaultFrameWidth, CvType.CV_8UC3);
-
-        msgFrameBuffer.frameBuffer.setEncoding(Custom.FrameBuffer.Encoding.RGB);
-        msgFrameBuffer.setImageBufferAddress(frameProcessed.dataAddr());
-
+        if (useYUV) {
+            yuvBuffer = msgFrameBuffer.frameBuffer.getImage().asByteBuffer();
+            msgFrameBuffer.frameBuffer.setEncoding(Custom.FrameBuffer.Encoding.YUV);
+        }
+        else {
+            msgFrameBuffer.frameBuffer.setEncoding(Custom.FrameBuffer.Encoding.RGB);
+            msgFrameBuffer.setImageBufferAddress(frameProcessed.dataAddr());
+        }
         msgFrameBuffer.frameBuffer.setFrameHeight(frameHeight);
         msgFrameBuffer.frameBuffer.setFrameWidth(frameWidth);
         msgFrameBuffer.frameBuffer.setYHeight(frameHeight);
@@ -105,7 +113,6 @@ public class CameraManager extends SensorInterface implements Runnable {
         rgbBuffer = bufferFromAddress(frameProcessed.dataAddr(), frameHeight*frameWidth*3);
 
         deltaTime = (long) 1000/frequency; //ms
-        loadIntrinsics();
     }
 
     public void processFrame(Mat frame){
@@ -164,7 +171,10 @@ public class CameraManager extends SensorInterface implements Runnable {
             end = System.currentTimeMillis();
             frameID += 1;
             processFrame(frame);
-
+            if (useYUV) {
+                rgb2yuv.run(rgbBuffer);
+                rgb2yuv.read_buffer(yuvBuffer);
+            }
             msgFrameData.frameData.setFrameId(frameID);
             ph.publishBuffer(frameDataTopic, msgFrameData.serialize(true));
             ph.publishBuffer(frameBufferTopic, msgFrameBuffer.serialize(true));
@@ -183,21 +193,6 @@ public class CameraManager extends SensorInterface implements Runnable {
 
     public boolean isRunning() {
         return this.initialized;
-    }
-
-    public void loadIntrinsics(){
-        if (params.exists(cameraParamName)) {
-            float[] cameraMatrix = byteToFloat(params.getBytes(cameraParamName));
-            updateProperty("intrinsics", cameraMatrix);
-        }
-    }
-
-    @Override
-    public synchronized void updateProperty(String property, float[] value) {
-        if (property.equals("intrinsics")){
-            assert value.length == 9 : "invalid intrinsic matrix buffer length";
-            setIntrinsics(value);
-        }
     }
 
     public void start() {

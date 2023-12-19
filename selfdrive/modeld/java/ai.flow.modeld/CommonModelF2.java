@@ -3,13 +3,38 @@ package ai.flow.modeld;
 // Core java classes
 
 public class CommonModelF2 {
-    public static final int DESIRE_LEN = 8;
-    public static final int TRAJECTORY_SIZE = 33;
 
-    public static final int DESIRE_PRED_SIZE = 32;
+    /* NUCLEAR GRADE MODEL OUTPUT
+        ModelOutputPlans: 19820, Offset: 0
+        ModelOutputLaneLines: 2144, Offset 19820
+        ModelOutputRoadEdges: 1056, Offset 21964
+        ModelOutputLeads: 420, Offset 23020
+        ModelOutputStopLines: 208, Offset 23440
+        ModelOutputMeta: 352, Offset 23648
+        ModelOutputPose: 48, Offset 24000
+        Total: 24048
+     */
+
+
+    public static final int SIZE_ModelOutputPlans = 19820 / 4;
+    public static final int SIZE_ModelOutputLaneLines = 2144 / 4;
+    public static final int SIZE_ModelOutputRoadEdges = 1056 / 4;
+    public static final int SIZE_ModelOutputLeads = 420 / 4;
+    public static final int SIZE_ModelOutputStopLines = 208 / 4;
+    public static final int SIZE_ModelOutputMeta = 352 / 4;
+    public static final int SIZE_ModelOutputPose = 48 / 4;
+    public static final int SIZE_ModelOutputLinesXY = 1056 / 4;
+    public static final int SIZE_ModelOutputStopLinePrediction = 68 / 4;
+    public static final int SIZE_Total = SIZE_ModelOutputPlans + SIZE_ModelOutputLaneLines + SIZE_ModelOutputRoadEdges +
+                                         SIZE_ModelOutputLeads + SIZE_ModelOutputStopLines + SIZE_ModelOutputMeta +
+                                         SIZE_ModelOutputPose;
+    public static final int SIZE_ModelOutputLeadPrediction = 204 / 4;
+    public static final int DESIRE_LEN = 8;
+    public static final int STOP_LINE_MHP_N = 3;
+    public static final int TRAJECTORY_SIZE = 33;
     public static final int OTHER_META_SIZE = 32;
     public static final int NUM_META_INTERVALS = 5;
-    public static final int META_STRIDE = 6;
+    public static final int META_STRIDE = 7;
 
     public static final int PLAN_MHP_N = 5;
     public static final int PLAN_MHP_COLUMNS = 15;
@@ -17,7 +42,7 @@ public class CommonModelF2 {
     public static final int PLAN_MHP_SELECTION = 1;
     public static final int PLAN_MHP_GROUP_SIZE =  (2*PLAN_MHP_VALS + PLAN_MHP_SELECTION);
 
-    public static final int LEAD_MHP_N = 5;
+    public static final int LEAD_MHP_N = 2;
     public static final int LEAD_TRAJ_LEN = 6;
     public static final int LEAD_PRED_DIM = 4;
     public static final int LEAD_MHP_VALS = LEAD_PRED_DIM * LEAD_TRAJ_LEN;
@@ -27,15 +52,15 @@ public class CommonModelF2 {
     public static final int POSE_SIZE = 12;
 
     public static final int PLAN_IDX = 0;
-    public static final int LL_IDX = PLAN_IDX + PLAN_MHP_N * PLAN_MHP_GROUP_SIZE;
-    public static final int LL_PROB_IDX = LL_IDX + 4*2*2*33;
-    public static final int RE_IDX = LL_PROB_IDX + 8;
-    public static final int LEAD_IDX = RE_IDX + 2*2*2*33;
-    public static final int LEAD_PROB_IDX = LEAD_IDX + LEAD_MHP_N * LEAD_MHP_GROUP_SIZE;
-    public static final int DESIRE_STATE_IDX = LEAD_PROB_IDX + 3;
-    public static final int META_IDX = DESIRE_STATE_IDX + DESIRE_LEN;
-    public static final int POSE_IDX = META_IDX + OTHER_META_SIZE + DESIRE_PRED_SIZE;
-    public static final int OUTPUT_SIZE =  POSE_IDX + POSE_SIZE;
+    public static final int LL_IDX = SIZE_ModelOutputPlans;
+    public static final int LL_PROB_IDX = LL_IDX + SIZE_ModelOutputLinesXY * 2;
+    public static final int RE_IDX = LL_IDX + SIZE_ModelOutputLaneLines;
+    public static final int LEAD_IDX = RE_IDX + SIZE_ModelOutputRoadEdges;
+    public static final int LEAD_PROB_IDX = LEAD_IDX + LEAD_MHP_N * SIZE_ModelOutputLeadPrediction;
+    public static final int STOP_SIGN_IDX = LEAD_IDX + SIZE_ModelOutputLeads;
+    public static final int META_IDX = STOP_SIGN_IDX + SIZE_ModelOutputStopLines;
+    public static final int POSE_IDX = META_IDX + SIZE_ModelOutputMeta;
+    public static final int OUTPUT_SIZE =  POSE_IDX + SIZE_ModelOutputPose;
     public static final int TEMPORAL_SIZE = 512;
 
     public static final float FCW_THRESHOLD_5MS2_HIGH = 0.15f;
@@ -44,9 +69,6 @@ public class CommonModelF2 {
 
     public static final float[] prev_brake_5ms2_probs = {0f, 0f, 0f, 0f, 0f};
     public static final float[] prev_brake_3ms2_probs = {0f, 0f, 0f};
-    public static final int MODEL_WIDTH = 512;
-    public static final int MODEL_HEIGHT = 256;
-    public static final int MODEL_FRAME_SIZE = MODEL_WIDTH * MODEL_HEIGHT * 3 / 2;
 
     public static final  float[] T_IDXS = {0.f, 0.00976562f, 0.0390625f, 0.08789062f, 0.15625f, 0.24414062f,  0.3515625f,  0.47851562f,
             0.625f, 0.79101562f, 0.9765625f, 1.18164062f,  1.40625f,  1.65039062f,  1.9140625f,

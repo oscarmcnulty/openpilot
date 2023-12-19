@@ -1,10 +1,13 @@
 .gradle
 .dep_update
-desktop/bin 
+desktop/bin
 !libs/capnpc-java/*
 libs/capnpc-java/capnproto-java
 selfdrive/modeld/bin/
 tmux-*
+__pycache__
+.cxx/
+android/.cxx/
 
 venv/
 .venv/

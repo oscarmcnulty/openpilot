@@ -3,8 +3,20 @@ package ai.flow.common;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class utils {
+
+    public enum USE_MODEL_RUNNER {
+        ONNX, // DOESNT WORK
+        SNPE, // Nicki Minaj Model
+        TNN, // DOESNT WORK
+        THNEED, // NLPv3
+        EXTERNAL_TINYGRAD // DOESNT WORK
+    }
+    public static boolean F2 = false, NLPModel = true;
+    public static USE_MODEL_RUNNER Runner = USE_MODEL_RUNNER.THNEED;
     public static boolean getBoolEnvVar(String key) {
         String val = System.getenv(key);
         boolean ret = false;

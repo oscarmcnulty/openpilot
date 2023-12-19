@@ -17,7 +17,6 @@ public class Launcher {
     public Map<String, SensorInterface> sensors;
     public FlowInitd flowInitd = new FlowInitd();
     public ParamsInterface params = ParamsInterface.getInstance();
-    SensorInterface cameraManager;
 
     public Launcher(Map<String, SensorInterface> sensors, ModelExecutor modelExecutor){
         this.sensors = sensors;
@@ -49,9 +48,11 @@ public class Launcher {
     }
 
     public void main(String[] args) {
-        CameraManager fCameraManager = new CameraManager(20, System.getenv("ROAD_CAMERA_SOURCE"), Camera.frameSize[0], Camera.frameSize[1]);
+        CameraManager eCameraManager = new CameraManager(Camera.CAMERA_TYPE_WIDE, 20, System.getenv("WIDE_ROAD_CAMERA_SOURCE"), Camera.frameSize[0], Camera.frameSize[1]);
+        CameraManager fCameraManager = new CameraManager(Camera.CAMERA_TYPE_ROAD, 20, System.getenv("ROAD_CAMERA_SOURCE"), Camera.frameSize[0], Camera.frameSize[1]);
         SensorManager sensorManager = new SensorManager();
         this.sensors = new HashMap<String, SensorInterface>() {{
+            put("wideRoadCamera", eCameraManager);
             put("roadCamera", fCameraManager);
             put("motionSensors", sensorManager);
         }};
@@ -61,7 +62,7 @@ public class Launcher {
         ModelRunner model = new TNNModelRunner(modelPath, true);
 
         ModelExecutor modelExecutor;
-        modelExecutor = new ModelExecutorF2(model);
+        modelExecutor = new ModelExecutorF3(model);
 
         this.modeld = modelExecutor;
         this.startAllD();

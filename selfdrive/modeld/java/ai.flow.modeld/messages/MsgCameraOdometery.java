@@ -41,21 +41,11 @@ public class MsgCameraOdometery extends MessageBase {
         transStd = odometry.initTransStd(3);
     }
 
-    public void fillParsed(ParsedOutputs parsed) {
-        for (int i = 0; i < 3; i++) {
-            parsed.rot[i] = rot.get(i);
-            parsed.rotStd[i] = rotStd.get(i);
-            parsed.trans[i] = trans.get(i);
-            parsed.transStd[i] = transStd.get(i);
-        }
-    }
-
     public void fill(ParsedOutputs parsed, long timestamp, int frameId) {
         odometry.setTimestampEof(timestamp);
         odometry.setFrameId(frameId);
 
         for (int i = 0; i < 3; i++) {
-
             rot.set(i, parsed.rot[i]);
             rotStd.set(i, parsed.rotStd[i]);
             trans.set(i, parsed.trans[i]);

@@ -1,103 +1,117 @@
 package ai.flow.android.sensor;
 
-import static ai.flow.android.sensor.Utils.fillYUVBuffer;
-import static ai.flow.common.BufferUtils.byteToFloat;
-import static ai.flow.common.transformations.Camera.CAMERA_TYPE_ROAD;
-import static ai.flow.common.transformations.Camera.fcamIntrinsicParam;
-
-import android.Manifest;
-import android.annotation.SuppressLint;
-import android.content.Context;
-import android.content.pm.PackageManager;
-import android.hardware.camera2.CaptureRequest;
-import android.os.Build;
-import android.util.Range;
-import android.util.Size;
-import android.view.Surface;
-
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-import androidx.camera.camera2.interop.Camera2Interop;
-import androidx.camera.core.CameraControl;
-import androidx.camera.core.CameraSelector;
-import androidx.camera.core.ImageAnalysis;
-import androidx.camera.core.ImageProxy;
-import androidx.camera.core.VideoCapture;
-import androidx.camera.lifecycle.ProcessCameraProvider;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.fragment.app.Fragment;
-
-import com.google.common.util.concurrent.ListenableFuture;
-
-import org.capnproto.PrimitiveList;
-import org.opencv.core.Core;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.TimeZone;
-import java.util.concurrent.ExecutionException;
-
+import ai.flow.app.OnRoadScreen;
 import ai.flow.common.ParamsInterface;
-import ai.flow.common.Path;
 import ai.flow.common.transformations.Camera;
+import ai.flow.common.utils;
 import ai.flow.definitions.Custom;
+import ai.flow.definitions.Definitions;
+import ai.flow.modeld.ModelExecutor;
+import ai.flow.modeld.ModelExecutorF3;
 import ai.flow.modeld.messages.MsgFrameData;
 import ai.flow.sensor.SensorInterface;
 import ai.flow.sensor.messages.MsgFrameBuffer;
+
+import android.annotation.SuppressLint;
+import android.content.Context;
+import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraMetadata;
+import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.CaptureResult;
+import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.MeteringRectangle;
+import android.hardware.camera2.params.TonemapCurve;
+import android.os.Build;
+import android.util.Range;
+import android.util.Size;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.OptIn;
+import androidx.annotation.RequiresApi;
+import androidx.camera.camera2.interop.Camera2CameraControl;
+import androidx.camera.camera2.interop.Camera2CameraInfo;
+import androidx.camera.camera2.interop.Camera2Interop;
+import androidx.camera.camera2.interop.CaptureRequestOptions;
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop;
+import androidx.camera.core.*;
+import androidx.camera.core.impl.CameraCaptureResult;
+import androidx.camera.core.impl.utils.ExifData;
+import androidx.camera.lifecycle.ProcessCameraProvider;
+import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import com.google.common.util.concurrent.ListenableFuture;
+
 import messaging.ZMQPubHandler;
+import org.capnproto.PrimitiveList;
+import org.opencv.core.Core;
+
+import java.nio.ByteBuffer;
+import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.List;
+import java.util.TimeZone;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+
+import static ai.flow.android.sensor.Utils.fillYUVBuffer;
+import static ai.flow.common.transformations.Camera.CAMERA_TYPE_ROAD;
 
 public class CameraManager extends SensorInterface {
 
+    private ImageAnalysis.Analyzer myAnalyzer, roadAnalyzer = null;
+    //public static List<CameraManager> Managers = new ArrayList<>();
     public ProcessCameraProvider cameraProvider;
-    public String frameDataTopic, frameBufferTopic;
+    public String frameDataTopic, frameBufferTopic, intName;
     public ZMQPubHandler ph;
     public boolean running = false;
-    public int W, H;
-    public MsgFrameData msgFrameData;
-    public MsgFrameBuffer msgFrameBuffer;
-    public PrimitiveList.Float.Builder K;
-    public int frequency;
+    public int W = Camera.frameSize[0];
+    public int H = Camera.frameSize[1];
+    public MsgFrameData msgFrameData, msgFrameRoadData;
+    public MsgFrameBuffer msgFrameBuffer, msgFrameRoadBuffer;
     public int frameID = 0;
     public boolean recording = false;
+    ExecutorService threadpool = Executors.newSingleThreadScheduledExecutor();
     public Context context;
-    public ParamsInterface params;
+    public ParamsInterface params = ParamsInterface.getInstance();
     public Fragment lifeCycleFragment;
     int cameraType;
     CameraControl cameraControl;
     SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd--HH-mm-ss.SSS");
     ByteBuffer yuvBuffer;
-    String videoFileName, vidFilePath, videoLockPath;
-    File lockFile;
+    Camera2CameraControl c2control;
+    Camera2CameraInfo c2info;
+    androidx.camera.core.Camera camera;
 
-    @SuppressLint("RestrictedApi")
-    public VideoCapture videoCapture = new VideoCapture.Builder()
-            .setTargetResolution(new Size(Camera.frameSize[0], Camera.frameSize[1]))
-            .setVideoFrameRate(20)
-            .setBitRate(2000_000)
-            .setTargetRotation(Surface.ROTATION_90)
-            .build();
+    public CameraSelector getCameraSelector(boolean  wide){
+        OnRoadScreen.CamSelected = Camera.UseCameraID;
+        if (wide || Camera.UseCameraID != 0) {
+            List<CameraInfo> availableCamerasInfo = cameraProvider.getAvailableCameraInfos();
+            return availableCamerasInfo.get(OnRoadScreen.CamSelected).getCameraSelector();
+        }
 
-    public CameraManager(Context context, int frequency){
-        this.W = Camera.frameSize[0];
-        this.H = Camera.frameSize[1];
-        this.msgFrameData = new MsgFrameData(CAMERA_TYPE_ROAD);
-        this.K  = msgFrameData.intrinsics;
-        this.params = ParamsInterface.getInstance();
+        return new CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
+    }
+
+    public CameraManager(Context context, int cameraType){
+        msgFrameData = new MsgFrameData(cameraType);
         System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
         df.setTimeZone(TimeZone.getTimeZone("UTC"));
         this.context = context;
-        this.frequency = frequency;
+        this.cameraType = cameraType;
+        if (cameraType == Camera.CAMERA_TYPE_WIDE || !utils.F2 && Camera.FORCE_TELE_CAM_F3){
+            this.frameDataTopic = "wideRoadCameraState";
+            this.frameBufferTopic = "wideRoadCameraBuffer";
+            this.intName = "WideCameraMatrix";
+        } else if (cameraType == CAMERA_TYPE_ROAD) {
+            this.frameDataTopic = "roadCameraState";
+            this.frameBufferTopic = "roadCameraBuffer";
+            this.intName = "CameraMatrix";
+        }
 
-        this.frameDataTopic = "roadCameraState";
-        this.frameBufferTopic = "roadCameraBuffer";
-
-        msgFrameBuffer = new MsgFrameBuffer(W * H * 3/2, CAMERA_TYPE_ROAD);
+        msgFrameBuffer = new MsgFrameBuffer(W * H * 3/2, cameraType);
         yuvBuffer = msgFrameBuffer.frameBuffer.getImage().asByteBuffer();
         msgFrameBuffer.frameBuffer.setEncoding(Custom.FrameBuffer.Encoding.YUV);
         msgFrameBuffer.frameBuffer.setFrameHeight(H);
@@ -105,23 +119,6 @@ public class CameraManager extends SensorInterface {
 
         ph = new ZMQPubHandler();
         ph.createPublishers(Arrays.asList(frameDataTopic, frameBufferTopic));
-
-        loadIntrinsics();
-    }
-
-    public void loadIntrinsics(){
-        if (params.exists(fcamIntrinsicParam)) {
-            float[] cameraMatrix = byteToFloat(params.getBytes(fcamIntrinsicParam));
-            updateProperty("intrinsics", cameraMatrix);
-        }
-    }
-
-    public void setIntrinsics(float[] intrinsics){
-        K.set(0, intrinsics[0]);
-        K.set(2, intrinsics[2]);
-        K.set(4,intrinsics[4]);
-        K.set(5, intrinsics[5]);
-        K.set(8, 1f);
     }
 
     public void setLifeCycleFragment(Fragment lifeCycleFragment){
@@ -132,13 +129,97 @@ public class CameraManager extends SensorInterface {
         if (running)
             return;
         running = true;
+
+        CameraManager myCamManager = this;
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(context);
         cameraProviderFuture.addListener(new Runnable() {
             @Override
             public void run() {
                 try {
                     cameraProvider = cameraProviderFuture.get();
+                    myAnalyzer = new ImageAnalysis.Analyzer() {
+                        @SuppressLint("RestrictedApi")
+                        @ExperimentalCamera2Interop @OptIn(markerClass = ExperimentalGetImage.class) @RequiresApi(api = Build.VERSION_CODES.N)
+                        @Override
+                        public void analyze(@NonNull ImageProxy image) {
+                            long startTimestamp = System.currentTimeMillis();
+                            fillYUVBuffer(image, yuvBuffer);
+
+                            ImageProxy.PlaneProxy yPlane = image.getPlanes()[0];
+
+                            msgFrameBuffer.frameBuffer.setYWidth(W);
+                            msgFrameBuffer.frameBuffer.setYHeight(H);
+                            msgFrameBuffer.frameBuffer.setYPixelStride(yPlane.getPixelStride());
+                            msgFrameBuffer.frameBuffer.setUvWidth(W /2);
+                            msgFrameBuffer.frameBuffer.setUvHeight(H /2);
+                            msgFrameBuffer.frameBuffer.setUvPixelStride(image.getPlanes()[1].getPixelStride());
+                            msgFrameBuffer.frameBuffer.setUOffset(W * H);
+                            if (image.getPlanes()[1].getPixelStride() == 2)
+                                msgFrameBuffer.frameBuffer.setVOffset(W * H +1);
+                            else
+                                msgFrameBuffer.frameBuffer.setVOffset(W * H + W * H /4);
+                            msgFrameBuffer.frameBuffer.setStride(yPlane.getRowStride());
+
+                            msgFrameData.frameData.setFrameId(frameID);
+
+                            ModelExecutor.instance.ExecuteModel(
+                                    msgFrameData.frameData.asReader(),
+                                    msgFrameBuffer.frameBuffer.asReader(),
+                                    startTimestamp);
+
+                            ph.publishBuffer(frameDataTopic, msgFrameData.serialize(true));
+                            ph.publishBuffer(frameBufferTopic, msgFrameBuffer.serialize(true));
+
+                            frameID += 1;
+                            image.close();
+
+                            // make sure we keep our zoom level and monitor brightness
+                            if (frameID % 6 == 0) {
+                                try {
+                                    cameraControl.setZoomRatio(Camera.digital_zoom_apply);
+                                } catch (Exception e) { }
+                                // evaluate luminosity in another low priority thread
+                                threadpool.submit(() -> {
+                                    Thread.currentThread().setPriority(Thread.NORM_PRIORITY - 1);
+                                    byte[] bytes = yuvBuffer.array();
+                                    int total = 0, count = bytes.length / 2048;
+                                    if (count > 0) {
+                                        for (int i=0; i<bytes.length; i+=2048)
+                                            total += bytes[i] & 0xFF;
+                                        final int luminance = total / count;
+                                        OnRoadScreen.CamExposure = luminance;
+                                    }
+                                    // try to stay around 115 and make bigger jumps if needed
+                                    int exposureDirection = 115 - OnRoadScreen.CamExposure;
+                                    int applyExposureDiff = 0;
+                                    if (exposureDirection >= 5) {
+                                        applyExposureDiff = 1;
+                                        exposureDirection -= 5;
+                                    }
+                                    else if (exposureDirection <= -5) {
+                                        applyExposureDiff = -1;
+                                        exposureDirection += 5;
+                                    }
+                                    applyExposureDiff += exposureDirection / 10;
+                                    int finalExposure = OnRoadScreen.currentExposureIndex + applyExposureDiff;
+                                    if (finalExposure > 3)
+                                        finalExposure = 3;
+                                    else if (finalExposure < -10)
+                                        finalExposure = -10;
+                                    cameraControl.setExposureCompensationIndex(finalExposure);
+                                    OnRoadScreen.currentExposureIndex = finalExposure;
+                                });
+                            }
+                        }
+                    };
+
+                    //if (utils.WideCameraOnly)
                     bindUseCases(cameraProvider);
+                    /*else {
+                        Managers.add(myCamManager);
+                        if (Managers.size() == 2)
+                            bindUseCasesGroup(Managers, cameraProvider);
+                    }*/
                 } catch (ExecutionException | InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -146,125 +227,82 @@ public class CameraManager extends SensorInterface {
         }, ContextCompat.getMainExecutor(context));
     }
 
+    /*@SuppressLint({"RestrictedApi", "UnsafeOptInUsageError"})
+    private static void bindUseCasesGroup(List<CameraManager> managers, ProcessCameraProvider cameraProvider) {
+        List<ConcurrentCamera.SingleCameraConfig> configs = new ArrayList<>();
+        for (int i=0; i<managers.size(); i++) {
+            CameraManager cm = managers.get(i);
+            ImageAnalysis.Builder builder = new ImageAnalysis.Builder();
+            builder.setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST);
+            builder.setDefaultResolution(new Size(cm.W, cm.H));
+            builder.setMaxResolution(new Size(cm.W, cm.H));
+            builder.setTargetResolution(new Size(cm.W, cm.H));
+            Camera2Interop.Extender<ImageAnalysis> ext = new Camera2Interop.Extender<>(builder);
+            ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{
+                    new MeteringRectangle(1, 1, cm.W - 2, cm.H - 2, 500)
+            });
+            ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<>(21, 40));
+            ImageAnalysis imageAnalysis = builder.build();
+            imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(cm.context), cm.myAnalyzer);
+            ConcurrentCamera.SingleCameraConfig camconfig = new ConcurrentCamera.SingleCameraConfig(
+                    cm.getCameraSelector(cm.cameraType == Camera.CAMERA_TYPE_WIDE),
+                    new UseCaseGroup.Builder()
+                            .addUseCase(imageAnalysis)
+                            .build(),
+                    cm.lifeCycleFragment.getViewLifecycleOwner());
+            configs.add(camconfig);
+        }
+        ConcurrentCamera concurrentCamera = cameraProvider.bindToLifecycle(configs);
+        List<androidx.camera.core.Camera> cams = concurrentCamera.getCameras();
+        for (int i=0; i<cams.size(); i++) {
+            CameraControl cc = cams.get(i).getCameraControl();
+            cc.cancelFocusAndMetering();
+        }
+    }*/
+
     @SuppressLint({"RestrictedApi", "UnsafeOptInUsageError"})
     private void bindUseCases(@NonNull ProcessCameraProvider cameraProvider) {
         ImageAnalysis.Builder builder = new ImageAnalysis.Builder();
         builder.setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST);
-        builder.setTargetResolution(new Size(W, H));
-        Camera2Interop.Extender<ImageAnalysis> ext = new Camera2Interop.Extender<>(builder);
-        ext.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<>(frequency, frequency));
-        ImageAnalysis imageAnalysis = builder.build();
-
-        imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context), new ImageAnalysis.Analyzer() {
-            @RequiresApi(api = Build.VERSION_CODES.N)
-            @Override
-            public void analyze(@NonNull ImageProxy image) {
-
-                fillYUVBuffer(image, yuvBuffer);
-
-                ImageProxy.PlaneProxy yPlane = image.getPlanes()[0];
-
-                msgFrameBuffer.frameBuffer.setYWidth(W);
-                msgFrameBuffer.frameBuffer.setYHeight(H);
-                msgFrameBuffer.frameBuffer.setYPixelStride(yPlane.getPixelStride());
-                msgFrameBuffer.frameBuffer.setUvWidth(W /2);
-                msgFrameBuffer.frameBuffer.setUvHeight(H /2);
-                msgFrameBuffer.frameBuffer.setUvPixelStride(image.getPlanes()[1].getPixelStride());
-                msgFrameBuffer.frameBuffer.setUOffset(W * H);
-                if (image.getPlanes()[1].getPixelStride() == 2)
-                    msgFrameBuffer.frameBuffer.setVOffset(W * H +1);
-                else
-                    msgFrameBuffer.frameBuffer.setVOffset(W * H + W * H /4);
-                msgFrameBuffer.frameBuffer.setStride(yPlane.getRowStride());
-
-                msgFrameData.frameData.setFrameId(frameID);
-
-                ph.publishBuffer(frameDataTopic, msgFrameData.serialize(true));
-                ph.publishBuffer(frameBufferTopic, msgFrameBuffer.serialize(true));
-
-                image.close();
-                frameID += 1;
-            }
+        Size ims = new Size(W, H);
+        builder.setDefaultResolution(ims);
+        builder.setMaxResolution(ims);
+        builder.setTargetResolution(ims);
+        Camera2Interop.Extender<ImageAnalysis> CameraRequests = new Camera2Interop.Extender<>(builder);
+        // try to box just the road area for metering
+        CameraRequests.setCaptureRequestOption(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{
+                new MeteringRectangle((int)Math.floor(W * 0.05f), (int)Math.floor(H * 0.25f),
+                                      (int)Math.floor(W * 0.9f),  (int)Math.floor(H * 0.70f), 500)
         });
+        float[] gammaCurve = new float[] {
+                0.0000f, 0.0000f, 0.0667f, 0.2864f, 0.1333f, 0.4007f, 0.2000f, 0.4845f,
+                0.2667f, 0.5532f, 0.3333f, 0.6125f, 0.4000f, 0.6652f, 0.4667f, 0.7130f,
+                0.5333f, 0.7569f, 0.6000f, 0.7977f, 0.6667f, 0.8360f, 0.7333f, 0.8721f,
+                0.8000f, 0.9063f, 0.8667f, 0.9389f, 0.9333f, 0.9701f, 1.0000f, 1.0000f
+        };
+        for (int i=3; i<gammaCurve.length; i+=2)
+            gammaCurve[i] = (gammaCurve[i] * 3f + 1f) / 4f;
+        TonemapCurve curve = new TonemapCurve(gammaCurve, gammaCurve, gammaCurve);
+        CameraRequests.setCaptureRequestOption(CaptureRequest.TONEMAP_MODE, CameraMetadata.TONEMAP_MODE_CONTRAST_CURVE);
+        CameraRequests.setCaptureRequestOption(CaptureRequest.TONEMAP_CURVE, curve);
+        CameraRequests.setCaptureRequestOption(CaptureRequest.CONTROL_MODE, CaptureRequest.CONTROL_MODE_AUTO);
+        CameraRequests.setCaptureRequestOption(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+        CameraRequests.setCaptureRequestOption(CaptureRequest.COLOR_CORRECTION_MODE, CaptureRequest.COLOR_CORRECTION_MODE_FAST);
+        CameraRequests.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, new Range<>(20, 20));
+        CameraRequests.setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_OFF);
+        CameraRequests.setCaptureRequestOption(CaptureRequest.LENS_FOCUS_DISTANCE, 0f);
+        ImageAnalysis imageAnalysis = builder.build();
+        imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context), myAnalyzer);
 
-        CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
+        // f3 uses wide camera.
+        CameraSelector cameraSelector = getCameraSelector(cameraType == Camera.CAMERA_TYPE_WIDE);
 
-        androidx.camera.core.Camera camera = cameraProvider.bindToLifecycle(lifeCycleFragment.getViewLifecycleOwner(), cameraSelector,
-                imageAnalysis, videoCapture);
+        camera = cameraProvider.bindToLifecycle(lifeCycleFragment.getViewLifecycleOwner(), cameraSelector, imageAnalysis);
 
         cameraControl = camera.getCameraControl();
-
-        // disable autofocus
-        cameraControl.cancelFocusAndMetering();
-    }
-
-    @SuppressLint("RestrictedApi")
-    public void startRecordCamera() {
-        if (recording)
-            return;
-        recording = true;
-        @SuppressLint("SdCardPath") File movieDir = new File(Path.getVideoStorageDir());
-
-        if (!movieDir.exists()) {
-            movieDir.mkdirs();
-        }
-
-        videoFileName = df.format(new Date());
-        vidFilePath = movieDir.getAbsolutePath() + "/" + videoFileName + ".mp4";
-        videoLockPath = movieDir.getAbsolutePath() + "/" + videoFileName + ".lock";
-
-        lockFile = new File(videoLockPath);
-        try {
-            lockFile.createNewFile();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        File vidFile = new File(vidFilePath);
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Do something
-        }
-
-        videoCapture.startRecording(
-                new VideoCapture.OutputFileOptions.Builder(vidFile).build(),
-                ContextCompat.getMainExecutor(context),
-                new VideoCapture.OnVideoSavedCallback() {
-                    @Override
-                    public void onVideoSaved(@NonNull VideoCapture.OutputFileResults outputFileResults) {
-                        System.out.println("[INFO] Video Saved: " + vidFile.getName());
-                        lockFile.delete();
-                    }
-                    @Override
-                    public void onError(int videoCaptureError, @NonNull String message, @Nullable Throwable cause) {
-                        System.err.println("[WARNING] Video Save Error: " + vidFile.getName() + " " + message);
-                        lockFile.delete();
-                    }
-                }
-        );
-    }
-
-    @Override
-    public void record(boolean shouldRecord) {
-        if (shouldRecord)
-            startRecordCamera();
-        else
-            stopRecordCamera();
-    }
-
-    @SuppressLint("RestrictedApi")
-    public void stopRecordCamera() {
-        if (!recording)
-            return;
-        videoCapture.stopRecording();
-        recording = false;
-    }
-
-    @Override
-    public void updateProperty(String property, float[] value) {
-        if (property.equals("intrinsics")){
-            assert value.length == 9 : "invalid intrinsic matrix buffer length";
-            setIntrinsics(value);
-        }
+        cameraControl.setZoomRatio(Camera.digital_zoom_apply);
+        c2control = Camera2CameraControl.from(cameraControl);
+        c2info = Camera2CameraInfo.from(camera.getCameraInfo());
     }
 
     public boolean isRunning() {
@@ -277,7 +315,6 @@ public class CameraManager extends SensorInterface {
         // TODO: add pause/resume functionality
         if (!running)
             return;
-        videoCapture.stopRecording();
         cameraProvider.unbindAll();
         running = false;
     }

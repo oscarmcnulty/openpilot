@@ -2,10 +2,14 @@ package ai.flow.android;
 
 import ai.flow.android.sensor.CameraManager;
 import ai.flow.android.sensor.SensorManager;
+import ai.flow.android.vision.ONNXModelRunner;
 import ai.flow.android.vision.SNPEModelRunner;
+import ai.flow.android.vision.THNEEDModelRunner;
 import ai.flow.app.FlowUI;
 import ai.flow.common.ParamsInterface;
 import ai.flow.common.Path;
+import ai.flow.common.transformations.Camera;
+import ai.flow.common.utils;
 import ai.flow.hardware.HardwareManager;
 import ai.flow.launcher.Launcher;
 import ai.flow.modeld.*;
@@ -13,6 +17,7 @@ import ai.flow.sensor.SensorInterface;
 import android.annotation.SuppressLint;
 import android.app.Application;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Process;
 import android.os.*;
 import android.provider.Settings;
@@ -22,6 +27,8 @@ import android.telephony.TelephonyManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Toast;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentTransaction;
@@ -37,6 +44,10 @@ import org.acra.data.StringFormat;
 import org.acra.sender.HttpSender;
 import org.jetbrains.annotations.NotNull;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.*;
 
 
@@ -45,6 +56,33 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 	public static Map<String, SensorInterface> sensors;
 	public static Context appContext;
 	public static ParamsInterface params;
+
+	public void LoadIntrinsicsFromFile() {
+		File file = new File(Path.getFlowPilotRoot(), utils.F2 ? "camerainfo.medium.txt" : "camerainfo.big.txt");
+		if (file.exists() == false) return;
+		try {
+			BufferedReader br = new BufferedReader(new FileReader(file));
+			String line;
+
+			float[] numbers = new float[5];
+			int i = 0;
+
+			while ((line = br.readLine()) != null && i < 5) {
+				numbers[i] = Float.parseFloat(line);
+				i++;
+			}
+			br.close();
+
+			Camera.FocalX = numbers[0];
+			Camera.FocalY = numbers[1];
+			Camera.CenterX = numbers[2];
+			Camera.CenterY = numbers[3];
+			Camera.UseCameraID = (int)numbers[4];
+
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 
 	@SuppressLint("HardwareIds")
 	@Override
@@ -71,14 +109,15 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 			throw new RuntimeException(e);
 		}
 
-
-		HardwareManager androidHardwareManager = new AndroidHardwareManager(getWindow());
-		// keep app from dimming due to inactivity.
+		Window activity = getWindow();
+		HardwareManager androidHardwareManager = new AndroidHardwareManager(activity);
 		androidHardwareManager.enableScreenWakeLock(true);
+		activity.setSustainedPerformanceMode(true);
+		activity.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
 		// get wakelock so we can switch windows without getting killed.
-		PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
-		PowerManager.WakeLock wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ai.flow.app::wakelock");
+		//PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+		//PowerManager.WakeLock wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ai.flow.app::wakelock");
 
 		// acquiring wakelock causes crash on some devices.
 		//try {
@@ -105,11 +144,19 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 		params.put("DeviceManufacturer", Build.MANUFACTURER);
 		params.put("DeviceModel", Build.MODEL);
 
+		utils.F2 = false; //!params.getBool("F3");
+
+		// get camera intrinsics from file if they exist
+		LoadIntrinsicsFromFile();
+
 		AndroidApplicationConfiguration configuration = new AndroidApplicationConfiguration();
-		CameraManager cameraManager = new CameraManager(getApplication().getApplicationContext(), 20);
+		CameraManager cameraManager, cameraManagerWide = null;
 		SensorManager sensorManager = new SensorManager(appContext, 100);
+		cameraManager = new CameraManager(getApplication().getApplicationContext(), utils.F2 || Camera.FORCE_TELE_CAM_F3 ? Camera.CAMERA_TYPE_ROAD : Camera.CAMERA_TYPE_WIDE);
+		CameraManager finalCameraManager = cameraManager; // stupid java
 		sensors = new HashMap<String, SensorInterface>() {{
-			put("roadCamera", cameraManager);
+			put("roadCamera", finalCameraManager);
+			put("wideRoadCamera", finalCameraManager); // use same camera until we move away from wide camera-only mode.
 			put("motionSensors", sensorManager);
 		}};
 
@@ -117,15 +164,41 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 
 		String modelPath = Path.getModelDir();
 
-		ModelRunner model;
+		ModelRunner model = null;
 		boolean useGPU = true; // always use gpus on android phones.
-		if (params.getBool("UseSNPE"))
-			model = new SNPEModelRunner(getApplication(), modelPath, useGPU);
-		else
-			model = new TNNModelRunner(modelPath, useGPU);
+		switch (utils.Runner) {
+			case SNPE:
+				model = new SNPEModelRunner(getApplication(), modelPath, useGPU);
+				break;
+			case TNN:
+				model = new TNNModelRunner(modelPath, useGPU);
+				break;
+			case ONNX:
+				model = new ONNXModelRunner(modelPath, useGPU);
+				break;
+			case THNEED:
+				model = new THNEEDModelRunner(modelPath, getApplication());
+				break;
+			case EXTERNAL_TINYGRAD:
+				// start the special model parser
+				/*Intent intent = new Intent();
+				intent.setClassName(TermuxConstants.TERMUX_PACKAGE_NAME, TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE_NAME);
+				intent.setAction(TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE.ACTION_RUN_COMMAND);
+				intent.putExtra(TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE.EXTRA_COMMAND_PATH, "/data/data/com.termux/files/usr/bin/bash");
+				intent.putExtra(TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE.EXTRA_ARGUMENTS, new String[]{"run"});
+				intent.putExtra(TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE.EXTRA_WORKDIR, "/data/data/com.termux/files/home/flowpilot_env_root/root/flowpilot/thneedrunner");
+				intent.putExtra(TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE.EXTRA_BACKGROUND, true);
+				intent.putExtra(TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE.EXTRA_SESSION_ACTION, "0");
+				intent.putExtra(TermuxConstants.TERMUX_APP.RUN_COMMAND_SERVICE.EXTRA_COMMAND_LABEL, "run thneedrunner");
+				startService(intent);*/
+				break;
+		}
 
 		ModelExecutor modelExecutor;
-		modelExecutor = new ModelExecutorF2(model);
+		if (utils.Runner == utils.USE_MODEL_RUNNER.EXTERNAL_TINYGRAD)
+			modelExecutor = new ModelExecutorExternal();
+		else
+			modelExecutor = utils.F2 ? new ModelExecutorF2(model) : new ModelExecutorF3(model);
 		Launcher launcher = new Launcher(sensors, modelExecutor);
 
 		/*ErrorReporter ACRAreporter = ACRA.getErrorReporter();
@@ -140,6 +213,7 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 
 		MainFragment fragment = new MainFragment(new FlowUI(launcher, androidHardwareManager, pid));
 		cameraManager.setLifeCycleFragment(fragment);
+		if (cameraManagerWide != null) cameraManagerWide.setLifeCycleFragment(fragment);
 		FragmentTransaction trans = getSupportFragmentManager().beginTransaction();
 		trans.replace(android.R.id.content, fragment);
 		trans.commit();
