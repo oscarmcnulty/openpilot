@@ -1,5 +1,8 @@
 /*
- * Copyright (c) The acados authors.
+ * Copyright 2019 Gianluca Frison, Dimitris Kouzoupis, Robin Verschueren,
+ * Andrea Zanelli, Niels van Duijkeren, Jonathan Frey, Tommaso Sartor,
+ * Branimir Novoselnik, Rien Quirynen, Rezart Qelibari, Dang Doan,
+ * Jonas Koenemann, Yutao Chen, Tobias Schöls, Jonas Schlagenhauf, Moritz Diehl
  *
  * This file is part of acados.
  *
@@ -65,6 +68,10 @@ typedef struct
 acados_size_t ocp_nlp_dynamics_disc_dims_calculate_size(void *config);
 //
 void *ocp_nlp_dynamics_disc_dims_assign(void *config, void *raw_memory);
+//
+void ocp_nlp_dynamics_disc_dims_initialize(void *config, void *dims, int nx, int nu, int nx1,
+                                           int nu1, int nz);
+
 //
 void ocp_nlp_dynamics_disc_dims_set(void *config_, void *dims_, const char *dim, int* value);
 

@@ -1,5 +1,3 @@
-acados_repo/
-lib
-!x86_64/
-!larch64/
-!aarch64/
+acados_repo
+!*.so
+!*.dylib

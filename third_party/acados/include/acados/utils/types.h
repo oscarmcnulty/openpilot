@@ -1,5 +1,8 @@
 /*
- * Copyright (c) The acados authors.
+ * Copyright 2019 Gianluca Frison, Dimitris Kouzoupis, Robin Verschueren,
+ * Andrea Zanelli, Niels van Duijkeren, Jonathan Frey, Tommaso Sartor,
+ * Branimir Novoselnik, Rien Quirynen, Rezart Qelibari, Dang Doan,
+ * Jonas Koenemann, Yutao Chen, Tobias Schöls, Jonas Schlagenhauf, Moritz Diehl
  *
  * This file is part of acados.
  *
@@ -75,7 +78,7 @@ typedef int (*casadi_function_t)(const double** arg, double** res, int* iw, doub
 enum return_values
 {
     ACADOS_SUCCESS,
-    ACADOS_NAN_DETECTED,
+    ACADOS_FAILURE,
     ACADOS_MAXITER,
     ACADOS_MINSTEP,
     ACADOS_QP_FAILURE,

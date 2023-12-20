@@ -1,5 +1,8 @@
 /*
- * Copyright (c) The acados authors.
+ * Copyright 2019 Gianluca Frison, Dimitris Kouzoupis, Robin Verschueren,
+ * Andrea Zanelli, Niels van Duijkeren, Jonathan Frey, Tommaso Sartor,
+ * Branimir Novoselnik, Rien Quirynen, Rezart Qelibari, Dang Doan,
+ * Jonas Koenemann, Yutao Chen, Tobias Schöls, Jonas Schlagenhauf, Moritz Diehl
  *
  * This file is part of acados.
  *
@@ -28,11 +31,6 @@
  * POSSIBILITY OF SUCH DAMAGE.;
  */
 
-{%- if not solver_options.custom_update_filename %}
-    {%- set custom_update_filename = "" %}
-{% else %}
-    {%- set custom_update_filename = solver_options.custom_update_filename %}
-{%- endif %}
 
 // standard
 #include <stdio.h>
@@ -43,9 +41,6 @@
 #include "acados_c/ocp_nlp_interface.h"
 #include "acados_c/external_function_interface.h"
 #include "acados_solver_{{ model.name }}.h"
-
-// blasfeo
-#include "blasfeo/include/blasfeo_d_aux_ext_dep.h"
 
 #define NX     {{ model.name | upper }}_NX
 #define NZ     {{ model.name | upper }}_NZ
@@ -195,11 +190,6 @@ int main()
     {
         printf("{{ model.name }}_acados_solve() failed with status %d.\n", status);
     }
-
-
-{%- if custom_update_filename != "" %}
-    {{ model.name }}_acados_custom_update(acados_ocp_capsule, xtraj, NX*(N+1));
-{%- endif %}
 
     // get solution
     ocp_nlp_out_get(nlp_config, nlp_dims, nlp_out, 0, "kkt_norm_inf", &kkt_norm_inf);

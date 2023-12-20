@@ -1,6 +1,9 @@
 # -*- coding: future_fstrings -*-
 #
-# Copyright (c) The acados authors.
+# Copyright 2019 Gianluca Frison, Dimitris Kouzoupis, Robin Verschueren,
+# Andrea Zanelli, Niels van Duijkeren, Jonathan Frey, Tommaso Sartor,
+# Branimir Novoselnik, Rien Quirynen, Rezart Qelibari, Dang Doan,
+# Jonas Koenemann, Yutao Chen, Tobias Schöls, Jonas Schlagenhauf, Moritz Diehl
 #
 # This file is part of acados.
 #
@@ -60,6 +63,7 @@ cdef class AcadosOcpSolverCython:
     cdef acados_solver_common.ocp_nlp_in *nlp_in
     cdef acados_solver_common.ocp_nlp_solver *nlp_solver
 
+    cdef int status
     cdef bint solver_created
 
     cdef str model_name
@@ -84,6 +88,7 @@ cdef class AcadosOcpSolverCython:
 
         # get pointers solver
         self.__get_pointers_solver()
+        self.status = 0
 
 
     def __get_pointers_solver(self):
@@ -100,24 +105,6 @@ cdef class AcadosOcpSolverCython:
         self.nlp_solver = acados_solver.acados_get_nlp_solver(self.capsule)
 
 
-    def solve_for_x0(self, x0_bar):
-        """
-        Wrapper around `solve()` which sets initial state constraint, solves the OCP, and returns u0.
-        """
-        self.set(0, "lbx", x0_bar)
-        self.set(0, "ubx", x0_bar)
-
-        status = self.solve()
-
-        if status == 2:
-            print("Warning: acados_ocp_solver reached maximum iterations.")
-        elif status != 0:
-            raise Exception(f'acados acados_ocp_solver returned status {status}')
-
-        u0 = self.get(0, "u")
-        return u0
-
-
     def solve(self):
         """
         Solve the ocp with current input.
@@ -125,24 +112,11 @@ cdef class AcadosOcpSolverCython:
         return acados_solver.acados_solve(self.capsule)
 
 
-    def reset(self, reset_qp_solver_mem=1):
+    def reset(self):
         """
         Sets current iterate to all zeros.
         """
-        return acados_solver.acados_reset(self.capsule, reset_qp_solver_mem)
-
-
-    def custom_update(self, data_):
-        """
-        A custom function that can be implemented by a user to be called between solver calls.
-        By default this does nothing.
-        The idea is to have a convenient wrapper to do complex updates of parameters and numerical data efficiently in C,
-        in a function that is compiled into the solver library and can be conveniently used in the Python environment.
-        """
-        data_len = len(data_)
-        cdef cnp.ndarray[cnp.float64_t, ndim=1] data = np.ascontiguousarray(data_, dtype=np.float64)
-
-        return acados_solver.acados_custom_update(self.capsule, <double *> data.data, data_len)
+        return acados_solver.acados_reset(self.capsule)
 
 
     def set_new_time_steps(self, new_time_steps):
@@ -279,7 +253,7 @@ cdef class AcadosOcpSolverCython:
 
         if field_ not in out_fields:
             raise Exception('AcadosOcpSolverCython.get(): {} is an invalid argument.\
-                    \n Possible values are {}.'.format(field_, out_fields))
+                    \n Possible values are {}. Exiting.'.format(field_, out_fields))
 
         if stage < 0 or stage > self.N:
             raise Exception('AcadosOcpSolverCython.get(): stage index must be in [0, N], got: {}.'.format(self.N))
@@ -336,22 +310,16 @@ cdef class AcadosOcpSolverCython:
         # get iterate:
         solution = dict()
 
-        lN = len(str(self.N+1))
         for i in range(self.N+1):
-            i_string = f'{i:0{lN}d}'
-            solution['x_'+i_string] = self.get(i,'x')
-            solution['u_'+i_string] = self.get(i,'u')
-            solution['z_'+i_string] = self.get(i,'z')
-            solution['lam_'+i_string] = self.get(i,'lam')
-            solution['t_'+i_string] = self.get(i, 't')
-            solution['sl_'+i_string] = self.get(i, 'sl')
-            solution['su_'+i_string] = self.get(i, 'su')
-            if i < self.N:
-                solution['pi_'+i_string] = self.get(i,'pi')
-
-        for k in list(solution.keys()):
-            if len(solution[k]) == 0:
-                del solution[k]
+            solution['x_'+str(i)] = self.get(i,'x')
+            solution['u_'+str(i)] = self.get(i,'u')
+            solution['z_'+str(i)] = self.get(i,'z')
+            solution['lam_'+str(i)] = self.get(i,'lam')
+            solution['t_'+str(i)] = self.get(i, 't')
+            solution['sl_'+str(i)] = self.get(i, 'sl')
+            solution['su_'+str(i)] = self.get(i, 'su')
+        for i in range(self.N):
+            solution['pi_'+str(i)] = self.get(i,'pi')
 
         # save
         with open(filename, 'w') as f:
@@ -540,8 +508,6 @@ cdef class AcadosOcpSolverCython:
                       sl: slack variables of soft lower inequality constraints \n
                       su: slack variables of soft upper inequality constraints \n
         """
-        if not isinstance(value_, np.ndarray):
-            raise Exception(f"set: value must be numpy array, got {type(value_)}.")
         cost_fields = ['y_ref', 'yref']
         constraints_fields = ['lbx', 'ubx', 'lbu', 'ubu']
         out_fields = ['x', 'u', 'pi', 'lam', 't', 'z', 'sl', 'su']
@@ -557,7 +523,7 @@ cdef class AcadosOcpSolverCython:
         else:
             if field_ not in constraints_fields + cost_fields + out_fields:
                 raise Exception("AcadosOcpSolverCython.set(): {} is not a valid argument.\
-                    \nPossible values are {}.".format(field, \
+                    \nPossible values are {}. Exiting.".format(field, \
                     constraints_fields + cost_fields + out_fields + ['p']))
 
             dims = acados_solver_common.ocp_nlp_dims_get_from_attr(self.nlp_config,
@@ -581,11 +547,6 @@ cdef class AcadosOcpSolverCython:
                 acados_solver_common.ocp_nlp_set(self.nlp_config, \
                     self.nlp_solver, stage, field, <void *> value.data)
 
-            if field_ == 'z':
-                field = 'z_guess'.encode('utf-8')
-                acados_solver_common.ocp_nlp_set(self.nlp_config, \
-                    self.nlp_solver, stage, field, <void *> value.data)
-        return
 
     def cost_set(self, int stage, str field_, value_):
         """
@@ -595,8 +556,6 @@ cdef class AcadosOcpSolverCython:
             :param field: string, e.g. 'yref', 'W', 'ext_cost_num_hess'
             :param value: of appropriate size
         """
-        if not isinstance(value_, np.ndarray):
-            raise Exception(f"cost_set: value must be numpy array, got {type(value_)}.")
         field = field_.encode('utf-8')
 
         cdef int dims[2]
@@ -630,9 +589,6 @@ cdef class AcadosOcpSolverCython:
             :param field: string in ['lbx', 'ubx', 'lbu', 'ubu', 'lg', 'ug', 'lh', 'uh', 'uphi', 'C', 'D']
             :param value: of appropriate size
         """
-        if not isinstance(value_, np.ndarray):
-            raise Exception(f"constraints_set: value must be numpy array, got {type(value_)}.")
-
         field = field_.encode('utf-8')
 
         cdef int dims[2]
@@ -650,7 +606,7 @@ cdef class AcadosOcpSolverCython:
             # Get elements in column major order
             value = np.asfortranarray(value_)
 
-        if value_shape != tuple(dims):
+        if value_shape[0] != dims[0] or value_shape[1] != dims[1]:
             raise Exception(f'AcadosOcpSolverCython.constraints_set(): mismatching dimension' +
                 f' for field "{field_}" at stage {stage} with dimension {tuple(dims)} (you have {value_shape})')
 
@@ -660,7 +616,7 @@ cdef class AcadosOcpSolverCython:
         return
 
 
-    def get_from_qp_in(self, int stage, str field_):
+    def dynamics_get(self, int stage, str field_):
         """
         Get numerical data from the dynamics module of the solver:
 
@@ -671,7 +627,7 @@ cdef class AcadosOcpSolverCython:
 
         # get dims
         cdef int[2] dims
-        acados_solver_common.ocp_nlp_qp_dims_get_from_attr(self.nlp_config, self.nlp_dims, self.nlp_out, stage, field, &dims[0])
+        acados_solver_common.ocp_nlp_dynamics_dims_get_from_attr(self.nlp_config, self.nlp_dims, self.nlp_out, stage, field, &dims[0])
 
         # create output data
         cdef cnp.ndarray[cnp.float64_t, ndim=2] out = np.zeros((dims[0], dims[1]), order='F')
@@ -743,50 +699,6 @@ cdef class AcadosOcpSolverCython:
         else:
             raise Exception('AcadosOcpSolverCython.options_set() does not support field {}.'\
                 '\n Possible values are {}.'.format(field_, ', '.join(int_fields + double_fields + string_fields)))
-
-
-    def set_params_sparse(self, int stage, idx_values_, param_values_):
-        """
-        set parameters of the solvers external function partially:
-        Pseudo: solver.param[idx_values_] = param_values_;
-        Parameters:
-            :param stage_: integer corresponding to shooting node
-            :param idx_values_: 0 based integer array corresponding to parameter indices to be set
-            :param param_values_: new parameter values as numpy array
-        """
-
-        if not isinstance(param_values_, np.ndarray):
-            raise Exception('param_values_ must be np.array.')
-
-        if param_values_.shape[0] != len(idx_values_):
-            raise Exception(f'param_values_ and idx_values_ must be of the same size.' +
-                 f' Got sizes idx {param_values_.shape[0]}, param_values {len(idx_values_)}.')
-
-        # n_update = c_int(len(param_values_))
-
-        # param_data = cast(param_values_.ctypes.data, POINTER(c_double))
-        # c_idx_values = np.ascontiguousarray(idx_values_, dtype=np.intc)
-        # idx_data = cast(c_idx_values.ctypes.data, POINTER(c_int))
-
-        # getattr(self.shared_lib, f"{self.model_name}_acados_update_params_sparse").argtypes = \
-        #                 [c_void_p, c_int, POINTER(c_int), POINTER(c_double), c_int]
-        # getattr(self.shared_lib, f"{self.model_name}_acados_update_params_sparse").restype = c_int
-        # getattr(self.shared_lib, f"{self.model_name}_acados_update_params_sparse") \
-        #                             (self.capsule, stage, idx_data, param_data, n_update)
-
-        cdef cnp.ndarray[cnp.float64_t, ndim=1] value = np.ascontiguousarray(param_values_, dtype=np.float64)
-        # cdef cnp.ndarray[cnp.intc, ndim=1] idx = np.ascontiguousarray(idx_values_, dtype=np.intc)
-
-        # NOTE: this does throw an error somehow:
-        # ValueError: Buffer dtype mismatch, expected 'int object' but got 'int'
-        # cdef cnp.ndarray[cnp.int, ndim=1] idx = np.ascontiguousarray(idx_values_, dtype=np.intc)
-
-        cdef cnp.ndarray[cnp.int32_t, ndim=1] idx = np.ascontiguousarray(idx_values_, dtype=np.int32)
-        cdef int n_update = value.shape[0]
-        # print(f"in set_params_sparse Cython n_update {n_update}")
-
-        assert acados_solver.acados_update_params_sparse(self.capsule, stage, <int *> idx.data, <double *> value.data, n_update) == 0
-        return
 
 
     def __del__(self):

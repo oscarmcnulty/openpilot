@@ -1,5 +1,8 @@
 /*
- * Copyright (c) The acados authors.
+ * Copyright 2019 Gianluca Frison, Dimitris Kouzoupis, Robin Verschueren,
+ * Andrea Zanelli, Niels van Duijkeren, Jonathan Frey, Tommaso Sartor,
+ * Branimir Novoselnik, Rien Quirynen, Rezart Qelibari, Dang Doan,
+ * Jonas Koenemann, Yutao Chen, Tobias Schöls, Jonas Schlagenhauf, Moritz Diehl
  *
  * This file is part of acados.
  *
@@ -134,8 +137,8 @@ typedef struct
     int (*casadi_work)(int *, int *, int *, int *);
     const int *(*casadi_sparsity_in)(int);
     const int *(*casadi_sparsity_out)(int);
-    int (*casadi_n_in)(void);
-    int (*casadi_n_out)(void);
+    int (*casadi_n_in)();
+    int (*casadi_n_out)();
     double **args;
     double **res;
     double *w;
@@ -192,8 +195,8 @@ typedef struct
     int (*casadi_work)(int *, int *, int *, int *);
     const int *(*casadi_sparsity_in)(int);
     const int *(*casadi_sparsity_out)(int);
-    int (*casadi_n_in)(void);
-    int (*casadi_n_out)(void);
+    int (*casadi_n_in)();
+    int (*casadi_n_out)();
     double **args;
     double **res;
     double *w;

@@ -1,5 +1,8 @@
 /*
- * Copyright (c) The acados authors.
+ * Copyright 2019 Gianluca Frison, Dimitris Kouzoupis, Robin Verschueren,
+ * Andrea Zanelli, Niels van Duijkeren, Jonathan Frey, Tommaso Sartor,
+ * Branimir Novoselnik, Rien Quirynen, Rezart Qelibari, Dang Doan,
+ * Jonas Koenemann, Yutao Chen, Tobias Schöls, Jonas Schlagenhauf, Moritz Diehl
  *
  * This file is part of acados.
  *
@@ -65,6 +68,7 @@ typedef struct
     /* dims */
     acados_size_t (*dims_calculate_size)(void *config);
     void *(*dims_assign)(void *config, void *raw_memory);
+    void (*dims_initialize)(void *config, void *dims, int nx, int nu, int nx1, int nu1, int nz);
     void (*dims_set)(void *config_, void *dims_, const char *field, int *value);
     void (*dims_get)(void *config_, void *dims_, const char *field, int* value);
     /* model */
