@@ -3,6 +3,23 @@
           xmlns:tools="http://schemas.android.com/tools"
           package="ai.flow.app">
 
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="true" />
+
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage"/>
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
+    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
+    <uses-permission android:name="com.termux.permission.RUN_COMMAND"/>
+
     <application
             android:allowBackup="true"
             android:icon="@drawable/ic_launcher"
@@ -11,6 +28,8 @@
             android:requestLegacyExternalStorage="true"
             android:theme="@style/GdxTheme"
             android:extractNativeLibs="true">
+        <uses-native-library
+            android:name="libOpenCL.so" />
         <activity
                 android:name="ai.flow.android.LoadingActivity"
                 android:theme="@style/Theme.AppCompat.Light"
@@ -28,7 +47,6 @@
                 android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout"
                 android:exported="true"
                 android:keepScreenOn="true"
-                android:label="@string/app_name"
                 android:screenOrientation="landscape">
         </activity>
     </application>
@@ -36,18 +54,5 @@
     <queries>
         <package android:name="com.termux" />
     </queries>
-
-    <uses-permission android:name="android.permission.VIBRATE"/>
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission
-            android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-            tools:ignore="ScopedStorage"/>
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>
-    <uses-permission android:name="com.termux.permission.RUN_COMMAND"/>
 
 </manifest>

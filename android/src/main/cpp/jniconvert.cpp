@@ -845,7 +845,7 @@ extern "C" {
         env->ReleaseStringUTFChars(javaString, cString);
     }
 
-    void JNICALL Java_ai_flow_android_vision_THNEEDModelRunner_getArray(JNIEnv *env, jobject obj, jint size) {
+    void JNICALL Java_ai_flow_android_vision_THNEEDModelRunner_getArray(JNIEnv *env, jclass clazz, jint size) {
         // Allocate a float array of the given size
         outputs = new jfloat[size];
         output_len = size;
@@ -857,11 +857,16 @@ extern "C" {
             features_buf[i] = 0;
     }
 
-    void JNICALL Java_ai_flow_android_vision_THNEEDModelRunner_initThneed(JNIEnv *env, jobject obj) {
+    void JNICALL Java_ai_flow_android_vision_THNEEDModelRunner_initThneed(JNIEnv *env, jclass clazz) {
+        if (opencl_library == nullptr) {
+            opencl_library = dlopen("libOpenCL.so", RTLD_LAZY | RTLD_LOCAL);
+            __android_log_print(ANDROID_LOG_ERROR, "JNILOG","Failed to load OpenCL library: %s\n", dlerror());
+            assert(opencl_library != nullptr);
+        }
         thneed = new ThneedModel(*pathString, outputs, output_len, 0, false, NULL);
     }
 
-    JNIEXPORT jfloatArray JNICALL Java_ai_flow_android_vision_THNEEDModelRunner_executeModel(JNIEnv *env, jobject obj,
+    JNIEXPORT jfloatArray JNICALL Java_ai_flow_android_vision_THNEEDModelRunner_executeModel(JNIEnv *env, jclass clazz,
                                                                jfloatArray input) {
         // buffers
         jfloat *input_buf = env->GetFloatArrayElements(input, 0);

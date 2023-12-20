@@ -1,8 +1,9 @@
 apply plugin: 'com.android.application'
 
 android {
+	namespace "ai.flow.app"
 	compileSdk 34
-	ndkVersion "21.1.6352462"
+	ndkVersion "26.1.10909125"
 	sourceSets {
 		main {
 			manifest.srcFile 'AndroidManifest.xml'
@@ -30,10 +31,13 @@ android {
 		exclude 'META-INF/dependencies.txt'
 	}
 
+	buildFeatures {
+		buildConfig true
+	}
 	defaultConfig {
 		applicationId 'ai.flow.android'
-		minSdkVersion 30
-		targetSdkVersion 30
+		minSdkVersion 31
+		targetSdkVersion 34
 		versionCode 1
 
 		// set acra config for crash reporting.
@@ -56,7 +60,7 @@ android {
 		externalNativeBuild {
 			cmake {
 				cppFlags "-std=c++17"
-				arguments "-DANDROID_STL=c++_shared"
+				arguments '-DANDROID_STL=c++_static'
 			}
 		}
 	}
@@ -86,9 +90,9 @@ android {
 repositories {
 	google()
 	mavenCentral()
-	flatDir {
-		dirs 'libs'
-	}
+	//flatDir {
+	//	dirs 'libs'
+	//}
 }
 
 configurations { natives }
@@ -135,8 +139,10 @@ dependencies {
 	implementation "org.bytedeco:openblas:$rootProject.openblas_version-$rootProject.javacpp_version"
 	implementation "org.bytedeco:openblas:$rootProject.openblas_version-$rootProject.javacpp_version:android-arm64"
 	implementation "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
-	implementation(name: 'snpe-release', ext:'aar')
-	implementation(name: 'onnxruntime-android-1.16.0', ext:'aar')
+	implementation files('libs/snpe-release.aar')
+	implementation files('libs/onnxruntime-android-1.16.0.aar')
+	//implementation(name: 'snpe-release', ext:'aar')
+	//implementation(name: 'onnxruntime-android-1.16.0', ext:'aar')
 	implementation "org.capnproto:runtime:0.1.13"
 	implementation ('com.termux.termux-app:termux-shared:0.117'){
 		exclude ((HashMap) [group: 'com.google.code.findbugs', module: 'annotations'])
@@ -176,11 +182,11 @@ task copyAndroidNatives() {
 	}
 }
 
-tasks.whenTaskAdded { packageTask ->
-	if (packageTask.name.contains("package")) {
-		packageTask.dependsOn 'copyAndroidNatives'
-	}
-}
+//tasks.whenTaskAdded { packageTask ->
+//	if (packageTask.name.contains("package")) {
+//		packageTask.dependsOn 'copyAndroidNatives'
+//	}
+//}
 
 task run(type: Exec) {
 	def path
