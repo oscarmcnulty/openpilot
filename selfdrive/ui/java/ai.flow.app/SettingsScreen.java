@@ -4,6 +4,8 @@ import ai.flow.app.CalibrationScreens.CalibrationInfo;
 import ai.flow.app.helpers.Utils;
 import ai.flow.common.ParamsInterface;
 import ai.flow.common.SystemUtils;
+import ai.flow.common.transformations.Camera;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.ScreenAdapter;
 import com.badlogic.gdx.graphics.Color;
@@ -174,7 +176,7 @@ public class SettingsScreen extends ScreenAdapter {
         buttonCalibrate.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                appContext.setScreen(new CalibrationInfo(appContext,true));
+                appContext.setScreen(new CalibrationInfo(appContext, Camera.CAMERA_TYPE_ROAD, true));
             }
         });
 

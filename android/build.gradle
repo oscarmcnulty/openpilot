@@ -1,7 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-	namespace "ai.flow.app"
+	namespace "ai.flow.android"
 	compileSdk 34
 	ndkVersion "26.1.10909125"
 	sourceSets {
@@ -56,11 +56,12 @@ android {
 
 		// set app version
 		versionName = rootProject.file('common/version.h').text.split("\"")[1].trim()
-
+		ndk {
+			abiFilters 'arm64-v8a', 'armeabi-v7a'
+		}
 		externalNativeBuild {
 			cmake {
 				cppFlags "-std=c++17"
-				arguments '-DANDROID_STL=c++_static'
 			}
 		}
 	}

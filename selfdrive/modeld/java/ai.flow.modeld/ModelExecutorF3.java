@@ -275,7 +275,7 @@ public class ModelExecutorF3 extends ModelExecutor {
         }
 
         initialized = true;
-        params.putBool("ModelDReady", true);
+        //params.putBool("ModelDReady", true);
     }
 
     public long getIterationRate() {

@@ -241,9 +241,9 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 	private void initACRA(Context base) {
 		String ACRA_URI = null, ACRA_AUTH_LOGIN = null, ACRA_AUTH_PASSWORD = null;
 		try {
-			ACRA_URI = (String)ai.flow.app.BuildConfig.class.getField("ACRA_URI").get(null);
-			ACRA_AUTH_LOGIN = (String)ai.flow.app.BuildConfig.class.getField("ACRA_AUTH_LOGIN").get(null);
-			ACRA_AUTH_PASSWORD = (String)ai.flow.app.BuildConfig.class.getField("ACRA_AUTH_PASSWORD").get(null);
+			ACRA_URI = (String)ai.flow.android.BuildConfig.class.getField("ACRA_URI").get(null);
+			ACRA_AUTH_LOGIN = (String)ai.flow.android.BuildConfig.class.getField("ACRA_AUTH_LOGIN").get(null);
+			ACRA_AUTH_PASSWORD = (String)ai.flow.android.BuildConfig.class.getField("ACRA_AUTH_PASSWORD").get(null);
 		} catch (Exception e) {}
 
 		if (ACRA_URI == null || ACRA_AUTH_LOGIN == null || ACRA_AUTH_PASSWORD == null)
@@ -268,7 +268,7 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 
 	private Boolean checkVersionMisMatch() {
 		// check version mismatch between android app and github repo project.
-		if (!params.getString("Version").equals(ai.flow.app.BuildConfig.VERSION_NAME)) {
+		if (!params.getString("Version").equals(ai.flow.android.BuildConfig.VERSION_NAME)) {
 			Toast.makeText(appContext, "WARNING: App version mismatch detected. Make sure you are using compatible versions of apk and github repo.", Toast.LENGTH_LONG).show();
 			return true;
 		}
