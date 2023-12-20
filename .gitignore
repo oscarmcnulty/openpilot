@@ -8,6 +8,7 @@ tmux-*
 __pycache__
 .cxx/
 android/.cxx/
+local.properties
 
 venv/
 .venv/
