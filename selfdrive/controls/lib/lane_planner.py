@@ -73,7 +73,7 @@ class LanePlanner:
     self.updateOptions -= 1
     if self.updateOptions <= 0:
       self.updateOptions = 100
-      self.UseModelPath = self.Options.get_bool("UseModelPath")
+      self.UseModelPath = False #self.Options.get_bool("UseModelPath")
 
     lane_lines = md.laneLines
     edges = md.roadEdges

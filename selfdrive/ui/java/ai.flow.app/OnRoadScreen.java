@@ -153,7 +153,7 @@ public class OnRoadScreen extends ScreenAdapter {
     long[] LastDebugMessageTime = new long[2];
 
     public boolean NoDebugMessagesWarning() {
-        return System.currentTimeMillis() - Math.min(LastDebugMessageTime[0], LastDebugMessageTime[1]) > 500;
+        return System.currentTimeMillis() - Math.max(LastDebugMessageTime[0], LastDebugMessageTime[1]) > 500;
     }
 
     public void PrepareDebugReader() {
