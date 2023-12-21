@@ -32,7 +32,7 @@ tools/install_ubuntu_dependencies.sh
 
 # pulling logs off device
 rm /sdcard/openpilot_log.zip
-zip -r /sdcard/openpilot_log.zip ~/.comma/media/0/realdata/2023-12-21--05-54-56--*
+zip -r /sdcard/openpilot_log.zip ~/.comma/media/0/realdata/2023-12-21--08-22-18--*
 #on powershell
 adb -s 3a516169 pull /sdcard/openpilot_log.zip /Users/om/Downloads/openpilot_log.zip 
 adb -s 3a516169 pull /sdcard/flowpilot/.flowdrive/media/0/videos/2023-12-18--04-51-31.698.mp4 /Users/om/Downloads/2023-12-18--04-51-31.698.mp4
@@ -41,8 +41,7 @@ docker ps # get name of dev container
 docker cp /mnt/c/Users/om/Downloads/openpilot_log.zip recursing_yalow:/workspaces/
 #on devcontainer
 unzip /workspaces/openpilot_log.zip -d /workspaces/
-poetry run python tools/plotjuggler/juggle.py /workspaces/root/.comma/media/0/realdata/2023-12-21--05-54-56--1/rlog
-cd /workspaces/openpilot/tools/cabana
+poetry run python tools/plotjuggler/juggle.py /workspaces/root/.comma/media/0/realdata/2023-12-21--08-22-18--1/rlog
 ./tools/cabana/cabana --no-vipc --data_dir /workspaces/root/.comma/media/0/realdata/ --dbc opendbc/vw_mlb.dbc 2023-12-18--04-51-33
 
 apt install qt5-default

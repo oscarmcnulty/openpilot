@@ -73,14 +73,14 @@ procs = [
   NativeProcess("locationd", "selfdrive/locationd", ["./locationd"], only_onroad),
   NativeProcess("boardd", "selfdrive/boardd", ["./boardd"], always_run, enabled=False),
   PythonProcess("calibrationd", "selfdrive.locationd.calibrationd", only_onroad),
-  PythonProcess("torqued", "selfdrive.locationd.torqued", only_onroad),
+  PythonProcess("torqued", "selfdrive.locationd.torqued", only_onroad), # only used for toyota/hyunda where tuning is "torque". VW uses PID lateral tuning.
   PythonProcess("controlsd", "selfdrive.controls.controlsd", only_onroad),
   PythonProcess("deleter", "system.loggerd.deleter", always_run), # cleans up segments when storage hits a minimum level
   #PythonProcess("dmonitoringd", "selfdrive.monitoring.dmonitoringd", driverview, enabled=(not PC or WEBCAM)),
 #  PythonProcess("qcomgpsd", "system.qcomgpsd.qcomgpsd", qcomgps, enabled=TICI),
   #PythonProcess("navd", "selfdrive.navd.navd", only_onroad),
   PythonProcess("pandad", "selfdrive.boardd.pandad", always_run),
-  PythonProcess("paramsd", "selfdrive.locationd.paramsd", only_onroad),
+  PythonProcess("paramsd", "selfdrive.locationd.paramsd", only_onroad), # deteremines live parameters like steering angle and logs to cereal `liveParameters`
 #  NativeProcess("ubloxd", "system/ubloxd", ["./ubloxd"], ublox, enabled=TICI),
 #  PythonProcess("pigeond", "system.sensord.pigeond", ublox, enabled=TICI),
   PythonProcess("plannerd", "selfdrive.controls.plannerd", only_onroad),
