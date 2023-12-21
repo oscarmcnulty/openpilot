@@ -5,47 +5,41 @@ import ai.flow.common.ParamsInterface;
 import ai.flow.common.transformations.Camera;
 import ai.flow.common.utils;
 import ai.flow.definitions.Custom;
-import ai.flow.definitions.Definitions;
 import ai.flow.modeld.ModelExecutor;
-import ai.flow.modeld.ModelExecutorF3;
 import ai.flow.modeld.messages.MsgFrameData;
 import ai.flow.sensor.SensorInterface;
 import ai.flow.sensor.messages.MsgFrameBuffer;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.hardware.camera2.CameraCaptureSession;
+import android.graphics.Rect;
 import android.hardware.camera2.CameraCharacteristics;
 import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
-import android.hardware.camera2.CaptureResult;
-import android.hardware.camera2.TotalCaptureResult;
 import android.hardware.camera2.params.MeteringRectangle;
 import android.hardware.camera2.params.TonemapCurve;
 import android.os.Build;
 import android.util.Range;
 import android.util.Size;
+import android.util.SizeF;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.OptIn;
 import androidx.annotation.RequiresApi;
-import androidx.camera.camera2.Camera2Config;
+import androidx.camera.camera2.internal.Camera2CameraInfoImpl;
 import androidx.camera.camera2.interop.Camera2CameraControl;
 import androidx.camera.camera2.interop.Camera2CameraInfo;
 import androidx.camera.camera2.interop.Camera2Interop;
-import androidx.camera.camera2.interop.CaptureRequestOptions;
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop;
 import androidx.camera.core.*;
-import androidx.camera.core.impl.CameraCaptureResult;
-import androidx.camera.core.impl.utils.ExifData;
-import androidx.camera.lifecycle.ExperimentalCameraProviderConfiguration;
+import androidx.camera.core.impl.LensFacingCameraFilter;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import messaging.ZMQPubHandler;
-import org.capnproto.PrimitiveList;
+
 import org.opencv.core.Core;
 
 import java.nio.ByteBuffer;
@@ -56,7 +50,6 @@ import java.util.TimeZone;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
 
 import static ai.flow.android.sensor.Utils.fillYUVBuffer;
 import static ai.flow.common.transformations.Camera.CAMERA_TYPE_ROAD;
@@ -89,11 +82,40 @@ public class CameraManager extends SensorInterface {
     Camera2CameraInfo c2info;
     androidx.camera.core.Camera camera;
 
-    public CameraSelector getCameraSelector(boolean  wide){
+    @OptIn(markerClass = ExperimentalCamera2Interop.class) @SuppressLint("RestrictedApi")
+    public CameraSelector getCameraSelectorAndUpdateIntrinsics(boolean  wide){
         OnRoadScreen.CamSelected = Camera.UseCameraID;
         if (wide || Camera.UseCameraID != 0) {
             List<CameraInfo> availableCamerasInfo = cameraProvider.getAvailableCameraInfos();
-            return availableCamerasInfo.get(OnRoadScreen.CamSelected).getCameraSelector();
+            CameraFilter lensFacingCameraFilter = new LensFacingCameraFilter(CameraSelector.LENS_FACING_BACK);
+            availableCamerasInfo = lensFacingCameraFilter.filter(availableCamerasInfo);
+
+            // wide camera is the one with smallest focal length
+            availableCamerasInfo.sort((c1, c2) -> {
+                float[] c1FocalLengths = ((Camera2CameraInfoImpl) c1).getCamera2CameraInfo().getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+                float[] c2FocalLengths = ((Camera2CameraInfoImpl) c2).getCamera2CameraInfo().getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS);
+                assert c1FocalLengths != null;
+                assert c2FocalLengths != null;
+                if (c1FocalLengths[0] < c2FocalLengths[0])
+                    return -1;
+                else if (c1FocalLengths[0] > c2FocalLengths[0])
+                    return 1;
+                else
+                    return 0;
+            });
+
+            float focalLengthMm = ((Camera2CameraInfoImpl)availableCamerasInfo.get(0)).getCamera2CameraInfo().getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)[0];
+            SizeF sensorSize = ((Camera2CameraInfoImpl)availableCamerasInfo.get(0)).getCamera2CameraInfo().getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE);
+            Size sensorPixels = ((Camera2CameraInfoImpl) availableCamerasInfo.get(0)).getCamera2CameraInfo().getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE);
+
+            float focalLengthWPixels = focalLengthMm / sensorSize.getWidth() * sensorPixels.getWidth();
+            float focalLengthHPixels = focalLengthMm / sensorSize.getHeight() * sensorPixels.getHeight();
+
+            float resolutionScale = 1f * W / sensorPixels.getWidth(); // scale sensor resolution to capture resolution
+
+            Camera.setCameraParams(resolutionScale * focalLengthWPixels, resolutionScale * focalLengthHPixels, W / 2f, H / 2f);
+
+            return availableCamerasInfo.get(0).getCameraSelector();
         }
 
         return new CameraSelector.Builder().requireLensFacing(CameraSelector.LENS_FACING_BACK).build();
@@ -316,12 +338,13 @@ public class CameraManager extends SensorInterface {
         imageAnalysis.setAnalyzer(ContextCompat.getMainExecutor(context), myAnalyzer);
 
         // f3 uses wide camera.
-        CameraSelector cameraSelector = getCameraSelector(cameraType == Camera.CAMERA_TYPE_WIDE);
+        CameraSelector cameraSelector = getCameraSelectorAndUpdateIntrinsics(cameraType == Camera.CAMERA_TYPE_WIDE);
 
         camera = cameraProvider.bindToLifecycle(lifeCycleFragment.getViewLifecycleOwner(), cameraSelector, imageAnalysis);
 
         cameraControl = camera.getCameraControl();
         cameraControl.setZoomRatio(Camera.digital_zoom_apply);
+        //cameraControl.setZoomRatio(1.2f);
         c2control = Camera2CameraControl.from(cameraControl);
         c2info = Camera2CameraInfo.from(camera.getCameraInfo());
     }

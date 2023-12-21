@@ -57,7 +57,7 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 	public static Context appContext;
 	public static ParamsInterface params;
 
-	public void LoadIntrinsicsFromFile() {
+	/*public void LoadIntrinsicsFromFile() {
 		File file = new File(Path.getFlowPilotRoot(), utils.F2 ? "camerainfo.medium.txt" : "camerainfo.big.txt");
 		if (file.exists() == false) return;
 		try {
@@ -82,7 +82,7 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-	}
+	}*/
 
 	@SuppressLint("HardwareIds")
 	@Override
@@ -147,7 +147,7 @@ public class AndroidLauncher extends FragmentActivity implements AndroidFragment
 		utils.F2 = false; //!params.getBool("F3");
 
 		// get camera intrinsics from file if they exist
-		LoadIntrinsicsFromFile();
+		//LoadIntrinsicsFromFile();
 
 		AndroidApplicationConfiguration configuration = new AndroidApplicationConfiguration();
 		CameraManager cameraManager, cameraManagerWide = null;
