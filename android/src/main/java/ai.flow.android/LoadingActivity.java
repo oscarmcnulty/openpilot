@@ -1,6 +1,5 @@
 package ai.flow.android;
 
-import ai.flow.app.R;
 import ai.flow.common.ParamsInterface;
 
 import android.Manifest;

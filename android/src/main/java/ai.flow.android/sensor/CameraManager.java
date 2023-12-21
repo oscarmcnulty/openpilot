@@ -29,6 +29,7 @@ import android.util.Size;
 import androidx.annotation.NonNull;
 import androidx.annotation.OptIn;
 import androidx.annotation.RequiresApi;
+import androidx.camera.camera2.Camera2Config;
 import androidx.camera.camera2.interop.Camera2CameraControl;
 import androidx.camera.camera2.interop.Camera2CameraInfo;
 import androidx.camera.camera2.interop.Camera2Interop;
@@ -37,6 +38,7 @@ import androidx.camera.camera2.interop.ExperimentalCamera2Interop;
 import androidx.camera.core.*;
 import androidx.camera.core.impl.CameraCaptureResult;
 import androidx.camera.core.impl.utils.ExifData;
+import androidx.camera.lifecycle.ExperimentalCameraProviderConfiguration;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -60,6 +62,8 @@ import static ai.flow.android.sensor.Utils.fillYUVBuffer;
 import static ai.flow.common.transformations.Camera.CAMERA_TYPE_ROAD;
 
 public class CameraManager extends SensorInterface {
+
+    private static boolean configured = false;
 
     private ImageAnalysis.Analyzer myAnalyzer, roadAnalyzer = null;
     //public static List<CameraManager> Managers = new ArrayList<>();
@@ -130,14 +134,33 @@ public class CameraManager extends SensorInterface {
             return;
         running = true;
 
-        CameraManager myCamManager = this;
+        /*synchronized(CameraManager.class) {
+            CameraSelector selector = Camera2Config.defaultConfig().getAvailableCamerasLimiter(null);
+
+            if (!configured) {
+                configured = true;
+                ProcessCameraProvider.configureInstance(
+                        CameraXConfig.Builder.fromConfig(Camera2Config.defaultConfig())
+                                .set
+                                //.setCameraExecutor(myExecutor)
+                                //.setSchedulerHandler(mySchedulerHandler)
+                                .build());
+            }
+        }*/
+
+
         ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(context);
         cameraProviderFuture.addListener(new Runnable() {
             @Override
             public void run() {
                 try {
                     cameraProvider = cameraProviderFuture.get();
-                    myAnalyzer = new ImageAnalysis.Analyzer() {
+                } catch (ExecutionException e) {
+                    throw new RuntimeException(e);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+                myAnalyzer = new ImageAnalysis.Analyzer() {
                         @SuppressLint("RestrictedApi")
                         @ExperimentalCamera2Interop @OptIn(markerClass = ExperimentalGetImage.class) @RequiresApi(api = Build.VERSION_CODES.N)
                         @Override
@@ -220,9 +243,7 @@ public class CameraManager extends SensorInterface {
                         if (Managers.size() == 2)
                             bindUseCasesGroup(Managers, cameraProvider);
                     }*/
-                } catch (ExecutionException | InterruptedException e) {
-                    e.printStackTrace();
-                }
+
             }
         }, ContextCompat.getMainExecutor(context));
     }

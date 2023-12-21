@@ -33,7 +33,6 @@ public class SetUpScreen extends ScreenAdapter {
             appContext.setScreen(new TrainingScreen(appContext));
             return;
         }*/
-        appContext.launcher.startSensorD();
         appContext.launcher.startAllD();
         appContext.setScreen(new IntroScreen(appContext));
 
@@ -46,9 +45,6 @@ public class SetUpScreen extends ScreenAdapter {
            //appContext.setScreen(new CalibrationInfo(appContext, false));
            //return;
         //}
-
-        appContext.launcher.startAllD();
-        appContext.setScreen(new IntroScreen(appContext));
     }
 
     @Override
