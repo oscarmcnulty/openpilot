@@ -10,12 +10,10 @@
 #include <eigen3/Eigen/Dense>
 
 
-constexpr float FCW_THRESHOLD_5MS2_HIGH = 0.15;
-constexpr float FCW_THRESHOLD_5MS2_LOW = 0.05;
-constexpr float FCW_THRESHOLD_3MS2 = 0.7;
 
 std::array<float, 5> prev_brake_5ms2_probs = {0,0,0,0,0};
 std::array<float, 3> prev_brake_3ms2_probs = {0,0,0};
+std::array<float, DISENGAGE_LEN * DISENGAGE_LEN> disengage_buffer = {};
 
 
 void fill_lead(cereal::ModelDataV2::LeadDataV3::Builder lead, const ModelOutputLeads &leads, int t_idx, float prob_t) {
@@ -97,6 +95,44 @@ void fill_meta(cereal::ModelDataV2::MetaData::Builder meta, const ModelOutputMet
   meta.setHardBrakePredicted(above_fcw_threshold);
 }
 
+void fill_confidence(cereal::ModelDataV2::Builder &framed) {
+  if (framed.getFrameId() % (2*MODEL_FREQ) == 0) {
+    // update every 2s to match predictions interval
+    auto dbps = framed.getMeta().getDisengagePredictions().getBrakeDisengageProbs();
+    auto dgps = framed.getMeta().getDisengagePredictions().getGasDisengageProbs();
+    auto dsps = framed.getMeta().getDisengagePredictions().getSteerOverrideProbs();
+
+    float any_dp[DISENGAGE_LEN];
+    float dp_ind[DISENGAGE_LEN];
+
+    for (int i = 0; i < DISENGAGE_LEN; i++) {
+      any_dp[i] = 1 - ((1-dbps[i])*(1-dgps[i])*(1-dsps[i])); // any disengage prob
+    }
+
+    dp_ind[0] = any_dp[0];
+    for (int i = 0; i < DISENGAGE_LEN-1; i++) {
+      dp_ind[i+1] = (any_dp[i+1] - any_dp[i]) / (1 - any_dp[i]); // independent disengage prob for each 2s slice
+    }
+
+    // rolling buf for 2, 4, 6, 8, 10s
+    std::memmove(&disengage_buffer[0], &disengage_buffer[DISENGAGE_LEN], sizeof(float) * DISENGAGE_LEN * (DISENGAGE_LEN-1));
+    std::memcpy(&disengage_buffer[DISENGAGE_LEN * (DISENGAGE_LEN-1)], &dp_ind[0], sizeof(float) * DISENGAGE_LEN);
+  }
+
+  float score = 0;
+  for (int i = 0; i < DISENGAGE_LEN; i++) {
+    score += disengage_buffer[i*DISENGAGE_LEN+DISENGAGE_LEN-1-i] / DISENGAGE_LEN;
+  }
+
+  if (score < RYG_GREEN) {
+    framed.setConfidence(cereal::ModelDataV2::ConfidenceClass::GREEN);
+  } else if (score < RYG_YELLOW) {
+    framed.setConfidence(cereal::ModelDataV2::ConfidenceClass::YELLOW);
+  } else {
+    framed.setConfidence(cereal::ModelDataV2::ConfidenceClass::RED);
+  }
+}
+
 template<size_t size>
 void fill_xyzt(cereal::XYZTData::Builder xyzt, const std::array<float, size> &t,
                const std::array<float, size> &x, const std::array<float, size> &y, const std::array<float, size> &z) {
@@ -150,6 +186,32 @@ void fill_plan(cereal::ModelDataV2::Builder &framed, const ModelOutputPlanPredic
   fill_xyzt(framed.initAcceleration(), T_IDXS_FLOAT, acc_x, acc_y, acc_z);
   fill_xyzt(framed.initOrientation(), T_IDXS_FLOAT, rot_x, rot_y, rot_z);
   fill_xyzt(framed.initOrientationRate(), T_IDXS_FLOAT, rot_rate_x, rot_rate_y, rot_rate_z);
+}
+
+void fill_lateral_planner(cereal::ModelDataV2::Builder &framed, const LateralPlannerOutput &model_lateral_planner_solution) {
+  std::array<float, TRAJECTORY_SIZE> lateral_plan_solution_x, lateral_plan_solution_y, lateral_plan_solution_yaw, lateral_plan_solution_yaw_rate;
+  std::array<float, TRAJECTORY_SIZE> lateral_plan_solution_x_std, lateral_plan_solution_y_std, lateral_plan_solution_yaw_std, lateral_plan_solution_yaw_rate_std;
+
+  for (int i=0; i<TRAJECTORY_SIZE; i++) {
+    lateral_plan_solution_x[i] = model_lateral_planner_solution.mean[i].x;
+    lateral_plan_solution_y[i] = model_lateral_planner_solution.mean[i].y;
+    lateral_plan_solution_yaw[i] = model_lateral_planner_solution.mean[i].yaw;
+    lateral_plan_solution_yaw_rate[i] = model_lateral_planner_solution.mean[i].yaw_rate;
+    lateral_plan_solution_x_std[i] = exp(model_lateral_planner_solution.std[i].x);
+    lateral_plan_solution_y_std[i] = exp(model_lateral_planner_solution.std[i].y);
+    lateral_plan_solution_yaw_std[i] = exp(model_lateral_planner_solution.std[i].yaw);
+    lateral_plan_solution_yaw_rate_std[i] = exp(model_lateral_planner_solution.std[i].yaw_rate);
+  }
+
+  auto lateral_planner_solution = framed.initLateralPlannerSolution();
+  lateral_planner_solution.setX(to_kj_array_ptr(lateral_plan_solution_x));
+  lateral_planner_solution.setY(to_kj_array_ptr(lateral_plan_solution_y));
+  lateral_planner_solution.setYaw(to_kj_array_ptr(lateral_plan_solution_yaw));
+  lateral_planner_solution.setYawRate(to_kj_array_ptr(lateral_plan_solution_yaw_rate));
+  lateral_planner_solution.setXStd(to_kj_array_ptr(lateral_plan_solution_x_std));
+  lateral_planner_solution.setYStd(to_kj_array_ptr(lateral_plan_solution_y_std));
+  lateral_planner_solution.setYawStd(to_kj_array_ptr(lateral_plan_solution_yaw_std));
+  lateral_planner_solution.setYawRateStd(to_kj_array_ptr(lateral_plan_solution_yaw_rate_std));
 }
 
 void fill_lane_lines(cereal::ModelDataV2::Builder &framed, const std::array<float, TRAJECTORY_SIZE> &plan_t,
@@ -235,11 +297,15 @@ void fill_model(cereal::ModelDataV2::Builder &framed, const ModelOutput &net_out
   }
 
   fill_plan(framed, best_plan);
+  fill_lateral_planner(framed, net_outputs.lateral_planner_solution); // NLP thing
   fill_lane_lines(framed, plan_t, net_outputs.lane_lines);
   fill_road_edges(framed, plan_t, net_outputs.road_edges);
 
   // meta
   fill_meta(framed.initMeta(), net_outputs.meta);
+
+  // confidence
+  fill_confidence(framed);
 
   // leads
   auto leads = framed.initLeadsV3(LEAD_MHP_SELECTION);
@@ -272,6 +338,7 @@ void model_publish(PubMaster &pm, uint32_t vipc_frame_id, uint32_t vipc_frame_id
   framed.setFrameAge(frame_age);
   framed.setFrameDropPerc(frame_drop * 100);
   framed.setTimestampEof(timestamp_eof);
+  //framed.setLocationMonoTime(timestamp_llk);
   framed.setModelExecutionTime(model_execution_time);
   if (send_raw_pred) {
     framed.setRawPredictions(kj::ArrayPtr<const float>(raw_pred, NET_OUTPUT_SIZE).asBytes());
@@ -290,15 +357,19 @@ void posenet_publish(PubMaster &pm, uint32_t vipc_frame_id, uint32_t vipc_droppe
   const auto &v_std = net_outputs.pose.velocity_std;
   const auto &r_std = net_outputs.pose.rotation_std;
   const auto &t_std = net_outputs.wide_from_device_euler.std;
+  const auto &road_transform_trans_mean = net_outputs.road_transform.position_mean; // after nicki
+  const auto &road_transform_trans_std = net_outputs.road_transform.position_std; // after nicki
 
   auto posenetd = msg.initEvent(valid && (vipc_dropped_frames < 1)).initCameraOdometry();
+
   posenetd.setTrans({v_mean.x, v_mean.y, v_mean.z});
   posenetd.setRot({r_mean.x, r_mean.y, r_mean.z});
   posenetd.setWideFromDeviceEuler({t_mean.x, t_mean.y, t_mean.z});
+  posenetd.setRoadTransformTrans({road_transform_trans_mean.x, road_transform_trans_mean.y, road_transform_trans_mean.z}); // after nicki
   posenetd.setTransStd({exp(v_std.x), exp(v_std.y), exp(v_std.z)});
   posenetd.setRotStd({exp(r_std.x), exp(r_std.y), exp(r_std.z)});
   posenetd.setWideFromDeviceEulerStd({exp(t_std.x), exp(t_std.y), exp(t_std.z)});
-
+  posenetd.setRoadTransformTransStd({exp(road_transform_trans_std.x), exp(road_transform_trans_std.y), exp(road_transform_trans_std.z)}); // after nicki
 
   posenetd.setTimestampEof(timestamp_eof);
   posenetd.setFrameId(vipc_frame_id);
@@ -342,15 +413,18 @@ uint32_t parse_posenet(uint32_t vipc_frame_id, uint32_t vipc_dropped_frames,
   const auto &v_std = net_outputs.pose.velocity_std;
   const auto &r_std = net_outputs.pose.rotation_std;
   const auto &t_std = net_outputs.wide_from_device_euler.std;
+  const auto &road_transform_trans_mean = net_outputs.road_transform.position_mean; // after nicki
+  const auto &road_transform_trans_std = net_outputs.road_transform.position_std; // after nicki
 
   auto posenetd = msg.initEvent(valid && (vipc_dropped_frames < 1)).initCameraOdometry();
   posenetd.setTrans({v_mean.x, v_mean.y, v_mean.z});
   posenetd.setRot({r_mean.x, r_mean.y, r_mean.z});
   posenetd.setWideFromDeviceEuler({t_mean.x, t_mean.y, t_mean.z});
+  posenetd.setRoadTransformTrans({road_transform_trans_mean.x, road_transform_trans_mean.y, road_transform_trans_mean.z}); // after nicki
   posenetd.setTransStd({exp(v_std.x), exp(v_std.y), exp(v_std.z)});
   posenetd.setRotStd({exp(r_std.x), exp(r_std.y), exp(r_std.z)});
   posenetd.setWideFromDeviceEulerStd({exp(t_std.x), exp(t_std.y), exp(t_std.z)});
-
+  posenetd.setRoadTransformTransStd({exp(road_transform_trans_std.x), exp(road_transform_trans_std.y), exp(road_transform_trans_std.z)}); // after nicki
 
   posenetd.setTimestampEof(timestamp_eof);
   posenetd.setFrameId(vipc_frame_id);

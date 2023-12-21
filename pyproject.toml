@@ -43,6 +43,8 @@ exclude = [
   "rednose_repo/",
   "tinygrad/",
   "tinygrad_repo/",
+  "teleoprtc/",
+  "teleoprtc_repo/",
   "third_party/",
 ]
 
