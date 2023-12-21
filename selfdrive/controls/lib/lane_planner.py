@@ -51,7 +51,8 @@ class LanePlanner:
     self.lane_width = 3.2
     self.lane_change_multiplier = 1
     self.Options = Params()
-    self.UseModelPath = self.Options.get_bool("UseModelPath")
+    #self.UseModelPath = self.Options.get_bool("UseModelPath")
+    self.UseModelPath = False
     self.BigModel = self.Options.get_bool("F3")
     self.updateOptions = 100
     self.tire_stiffness_multiplier = 1.0

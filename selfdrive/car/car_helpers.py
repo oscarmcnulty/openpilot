@@ -1,5 +1,4 @@
 import os
-import time
 from typing import Callable, Dict, List, Optional, Tuple
 
 from cereal import car
@@ -125,7 +124,6 @@ def fingerprint(logcan, sendcan, num_pandas):
   ecu_rx_addrs = set()
   params = Params()
 
-  start_time = time.monotonic()
   if not skip_fw_query:
     # Vin query only reliably works through OBDII
     bus = 1
@@ -166,8 +164,6 @@ def fingerprint(logcan, sendcan, num_pandas):
   set_obd_multiplexing(params, False)
   params.put_bool("FirmwareQueryDone", True)
 
-  fw_query_time = time.monotonic() - start_time
-
   # CAN fingerprint
   # drain CAN socket so we get the latest messages
   messaging.drain_sock_raw(logcan)
@@ -187,8 +183,7 @@ def fingerprint(logcan, sendcan, num_pandas):
     source = car.CarParams.FingerprintSource.fixed
 
   cloudlog.event("fingerprinted", car_fingerprint=car_fingerprint, source=source, fuzzy=not exact_match, cached=cached,
-                 fw_count=len(car_fw), ecu_responses=list(ecu_rx_addrs), vin_rx_addr=vin_rx_addr, fingerprints=finger,
-                 fw_query_time=fw_query_time, error=True)
+                 fw_count=len(car_fw), ecu_responses=list(ecu_rx_addrs), vin_rx_addr=vin_rx_addr, error=True)
   return car_fingerprint, finger, vin, car_fw, source, exact_match
 
 
