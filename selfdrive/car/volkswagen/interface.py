@@ -195,6 +195,7 @@ class CarInterface(CarInterfaceBase):
     elif candidate == CAR.AUDI_Q5_MK1:
       ret.mass = 1975
       ret.wheelbase = 2.81
+      CarInterfaceBase.configure_torque_tune(candidate, ret.lateralTuning)
 
     elif candidate == CAR.SEAT_ATECA_MK1:
       ret.mass = 1900
