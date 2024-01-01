@@ -30,10 +30,6 @@ adb shell run-as com.termux files/usr/bin/bash -lic 'export PATH=/data/data/com.
 # things missing in setup scripts
 tools/install_ubuntu_dependencies.sh
 
-# Use codeserver on device
-ssh OnePlus-7T.lan "sudo login-flowpilot-root code-server"
-ssh -N -L 8035:localhost:8035 OnePlus-7T.lan
-
 # pulling logs off device
 rm /sdcard/openpilot_log.zip
 zip -r /sdcard/openpilot_log.zip ~/.comma/media/0/realdata/2023-12-21--21-44-59--*
