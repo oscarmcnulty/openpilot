@@ -9,7 +9,7 @@ from openpilot.common.params import Params
 
 TRAJECTORY_SIZE = 33
 # positive numbers go right
-CAMERA_OFFSET = 0.08
+CAMERA_OFFSET = -0.05
 MIN_LANE_DISTANCE = 2.6
 MAX_LANE_DISTANCE = 3.7
 MAX_LANE_CENTERING_AWAY = 1.85
@@ -52,7 +52,7 @@ class LanePlanner:
     self.lane_change_multiplier = 1
     self.Options = Params()
     #self.UseModelPath = self.Options.get_bool("UseModelPath")
-    self.UseModelPath = False
+    self.UseModelPath = True
     self.BigModel = self.Options.get_bool("F3")
     self.updateOptions = 100
     self.tire_stiffness_multiplier = 1.0
@@ -73,7 +73,7 @@ class LanePlanner:
     self.updateOptions -= 1
     if self.updateOptions <= 0:
       self.updateOptions = 100
-      self.UseModelPath = False #self.Options.get_bool("UseModelPath")
+      self.UseModelPath = True #self.Options.get_bool("UseModelPath")
 
     lane_lines = md.laneLines
     edges = md.roadEdges

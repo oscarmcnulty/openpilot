@@ -11,7 +11,7 @@ import cereal.messaging as messaging
 from cereal import log
 
 TRAJECTORY_SIZE = 33
-CAMERA_OFFSET = 0.04
+CAMERA_OFFSET = -0.05
 
 
 PATH_COST = 1.0
