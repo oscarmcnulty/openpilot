@@ -30,8 +30,6 @@ import static android.os.Build.VERSION.SDK_INT;
 public class LoadingActivity extends AppCompatActivity {
 
     List<String> requiredPermissions = Arrays.asList(Manifest.permission.CAMERA,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.READ_PHONE_STATE,
             Manifest.permission.WAKE_LOCK,
@@ -79,7 +77,11 @@ public class LoadingActivity extends AppCompatActivity {
                 while (!checkPermissions()){
                     // show toast every 4 seconds
                     if (i%40 == 0)
-                        Toast.makeText(getApplicationContext(), "Flowpilot needs all required permissions to be granted to work.", Toast.LENGTH_LONG).show();
+                        runOnUiThread(new Runnable() {
+                            public void run() {
+                                Toast.makeText(LoadingActivity.this, "Flowpilot needs all required permissions to be granted to work.", Toast.LENGTH_LONG).show();
+                            }
+                        });
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
