@@ -14,6 +14,13 @@ export ZMQ_MESSAGING_PROTOCOL="TCP" # TCP, INTER_PROCESS, SHARED_MEMORY
 #export DEVICE_ADDR="127.0.0.1" # connect to external device running flowpilot over same network. useful for livestreaming.
 
 export SIMULATION="1"
+
+#export -n LOG_TIMESTAMPS
+#export LOG_TIMESTAMPS="1"
+
+#export -n LIBUSB_DEBUG
+export LIBUSB_DEBUG="4"
+
 export FINGERPRINT="AUDI Q5 1ST GEN"
 #export FINGERPRINT="HONDA CIVIC 2016"
 export SKIP_FW_QUERY="1"
@@ -37,6 +44,7 @@ if pgrep -x "flowinit" > /dev/null
         echo "another instance of flowinit is already running"
         exit
     else
+        rm tmux-*
         # start a tmux pane
         source ~/.pyenvrc
         #tmux pipe-pane "cat >> $HOME/.tmux/logs/tmux_session_#S_#I_#P_$(date +%Y%m%d%H%M%S).log" 2> /dev/null

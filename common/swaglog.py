@@ -132,4 +132,4 @@ ipchandler = UnixDomainSocketHandler(SwagFormatter(log))
 
 log.addHandler(outhandler)
 # logs are sent through IPC before writing to disk to prevent disk I/O blocking
-log.addHandler(ipchandler)
+#log.addHandler(ipchandler)

@@ -250,7 +250,7 @@ void can_recv_thread(std::vector<Panda *> pandas) {
   PubMaster pm({"can"});
 
   // run at 100Hz
-  RateKeeper rk("boardd_can_recv", 100);
+  RateKeeper rk("boardd_can_recv", 100, 1e-4); // log if loop is lagging by more that 1ms
   std::vector<can_frame> raw_can_data;
 
   while (!do_exit && check_all_connected(pandas)) {
@@ -272,7 +272,10 @@ void can_recv_thread(std::vector<Panda *> pandas) {
     }
     pm.send("can", msg);
 
-    rk.keepTime();
+    bool lagged = rk.keepTime();
+    if (lagged) {
+      LOGE("can recv thread running slower than 100Hz");
+    }
   }
 }
 

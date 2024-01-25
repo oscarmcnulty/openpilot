@@ -31,7 +31,7 @@ class ParamsServer:
         while not exit_event.is_set():
             key = sock_get.recv()
             data = Params().get(key)
-            cloudlog.debug(f"keyvald GET: {key} = {data}")
+            #cloudlog.debug(f"keyvald GET: {key} = {data}")
             sock_get.send(data if data is not None else b"")
 
     @staticmethod
@@ -42,7 +42,7 @@ class ParamsServer:
         sock_del.bind(sock_del_path) # del socket
         while not exit_event.is_set():
             key = sock_del.recv()
-            cloudlog.debug(f"keyvald DEL: {key}")
+            #cloudlog.debug(f"keyvald DEL: {key}")
             Params().remove(key)
             sock_del.send(b"1")
 
