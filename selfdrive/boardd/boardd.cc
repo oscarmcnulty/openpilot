@@ -253,12 +253,23 @@ void can_recv_thread(std::vector<Panda *> pandas) {
   RateKeeper rk("boardd_can_recv", 100, 1e-4); // log if loop is lagging by more that 1ms
   std::vector<can_frame> raw_can_data;
 
+  int metric_i = 0;
+  uint64_t panda_read_time_ns_sum = 0;
+  uint64_t panda_read_time_ns_max = 0;
+  uint64_t start = 0;
+  uint64_t elapsed = 0;
+
   while (!do_exit && check_all_connected(pandas)) {
     bool comms_healthy = true;
+
+    start = nanos_since_boot();
     raw_can_data.clear();
     for (const auto& panda : pandas) {
       comms_healthy &= panda->can_receive(raw_can_data);
     }
+    elapsed = nanos_since_boot() - start;
+    panda_read_time_ns_sum += elapsed;
+    if (elapsed > panda_read_time_ns_max) panda_read_time_ns_max = elapsed;
 
     MessageBuilder msg;
     auto evt = msg.initEvent();
@@ -275,6 +286,15 @@ void can_recv_thread(std::vector<Panda *> pandas) {
     bool lagged = rk.keepTime();
     if (lagged) {
       LOGE("can recv thread running slower than 100Hz");
+    }
+
+    if (++metric_i == 20){
+      metric_i = 0;
+      LOG("can_recv_thread timings: usb mean: %.2fms usb max: %.2fms", 
+        panda_read_time_ns_sum * 1e-6 / 20., panda_read_time_ns_max * 1e-6);
+
+      panda_read_time_ns_sum = 0;
+      panda_read_time_ns_max = 0;
     }
   }
 }
@@ -364,7 +384,6 @@ std::optional<bool> send_panda_states(PubMaster *pm, const std::vector<Panda *> 
     ps.setIgnitionLine(health.ignition_line_pkt);
     ps.setIgnitionCan(health.ignition_can_pkt);
     ps.setControlsAllowed(health.controls_allowed_pkt);
-    ps.setGasInterceptorDetected(health.gas_interceptor_detected_pkt);
     ps.setTxBufferOverflow(health.tx_buffer_overflow_pkt);
     ps.setRxBufferOverflow(health.rx_buffer_overflow_pkt);
     ps.setGmlanSendErrs(health.gmlan_send_errs_pkt);

@@ -14,7 +14,6 @@ from openpilot.selfdrive.boardd.set_time import set_time
 from openpilot.system.hardware import HARDWARE
 from openpilot.common.swaglog import cloudlog
 
-from openpilot.common.system import is_android, is_android_rooted
 
 def get_expected_signature(panda: Panda) -> bytes:
   try:
@@ -23,7 +22,6 @@ def get_expected_signature(panda: Panda) -> bytes:
   except Exception:
     cloudlog.exception("Error computing expected signature")
     return b""
-
 
 def flash_panda(panda_serial: str) -> Panda:
   try:
@@ -81,43 +79,6 @@ def panda_sort_cmp(a: Panda, b: Panda):
 
   # last resort: sort by serial number
   return a.get_usb_serial() < b.get_usb_serial()
-
-def is_panda(usb_fd):
-  os.chdir(os.path.join(BASEDIR, "selfdrive/boardd"))
-  try:
-    ret = eval(subprocess.check_output(["termux-usb", "-r", "-e", "./ispanda", usb_fd], encoding='utf8').rstrip())
-    return ret
-  except Exception:
-    return False
-
-def main_android_no_root() -> NoReturn:
-  # android termux-usb implementation.
-  cloudlog.info("Running pandad in no-root mode")
-
-  print("listing usb devices.. if this hangs here, restart termux.")
-  while True:
-    try:
-      panda_descriptors = []
-      usb_fd_list = eval(subprocess.check_output(["termux-usb", "-l"], encoding='utf8').rstrip())
-
-      for usb_fd in usb_fd_list:
-        if is_panda(usb_fd):
-          panda_descriptors.append(usb_fd)
-      if len(panda_descriptors) == 0:
-        print("no panda found, retrying..")
-        time.sleep(0.5)
-        continue
-      panda_descriptor = panda_descriptors[0] # pickup first panda
-      print(f"connecting to panda {panda_descriptor}..")
-
-    except Exception as e:
-      cloudlog.exception("Panda USB exception while setting up: " + str(e))
-      continue
-
-    # run boardd with file descriptors as arguments
-    os.environ['MANAGER_DAEMON'] = 'boardd'
-    os.chdir(os.path.join(BASEDIR, "selfdrive/boardd"))
-    subprocess.run(["termux-usb", "-r", "-e", "./boardd", panda_descriptor], check=True)
 
 def main() -> NoReturn:
   count = 0
@@ -216,11 +177,5 @@ def main() -> NoReturn:
     os.chdir(os.path.join(BASEDIR, "selfdrive/boardd"))
     subprocess.run(["./boardd", *panda_serials], check=True)
 
-def run():
-    if is_android() and not is_android_rooted():
-      main_android_no_root()
-    else:
-      main()
-
 if __name__ == "__main__":
-  run()
+  main()

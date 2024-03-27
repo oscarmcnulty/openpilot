@@ -16,10 +16,10 @@ export ZMQ_MESSAGING_PROTOCOL="TCP" # TCP, INTER_PROCESS, SHARED_MEMORY
 export SIMULATION="1"
 
 #export -n LOG_TIMESTAMPS
-#export LOG_TIMESTAMPS="1"
+export LOG_TIMESTAMPS="1"
 
-#export -n LIBUSB_DEBUG
-export LIBUSB_DEBUG="4"
+export -n LIBUSB_DEBUG
+#export LIBUSB_DEBUG="4"
 
 export FINGERPRINT="AUDI Q5 1ST GEN"
 #export FINGERPRINT="HONDA CIVIC 2016"
@@ -48,7 +48,7 @@ if pgrep -x "flowinit" > /dev/null
         # start a tmux pane
         source ~/.pyenvrc
         #tmux pipe-pane "cat >> $HOME/.tmux/logs/tmux_session_#S_#I_#P_$(date +%Y%m%d%H%M%S).log" 2> /dev/null
-        tmux -v -v new-session  -d -s "flowpilot" "poetry run scons && poetry run python openpilot/selfdrive/manager/manager.py"
+        tmux -v -v new-session  -d -s "flowpilot" "poetry run scons -j4 && poetry run python openpilot/selfdrive/manager/manager.py"
         #tmux new-session -d -s "flowpilot" "scons && flowinit"
         tmux attach -t flowpilot
 fi
