@@ -87,10 +87,6 @@ class CarEvents:
         if CC.enabled and CS.vEgo < self.CP.minEnableSpeed:
           events.add(EventName.speedTooLow)
 
-      # TODO: this needs to be implemented generically in carState struct
-      # if CC.eps_timer_soft_disable_alert:
-      #   events.add(EventName.steerTimeLimit)
-
     return events
 
   def create_common_events(self, CS: structs.CarState, CS_prev: car.CarState):
@@ -149,6 +145,8 @@ class CarEvents:
       events.add(EventName.invalidLkasSetting)
     if CS.lowSpeedAlert:
       events.add(EventName.belowSteerSpeed)
+    if CS.steerTimeLimit:
+      events.add(EventName.steerTimeLimit)
     if CS.buttonEnable:
       events.add(EventName.buttonEnable)
 
