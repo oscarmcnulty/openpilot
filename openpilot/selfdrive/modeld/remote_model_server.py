@@ -11,9 +11,8 @@ The model is compiled from the onnx on every start. tinygrad keeps compiled kern
 The warmup prints per-run timings, which doubles as the benchmark: the whole 20Hz budget is 50ms
 and the link takes a share of it.
 
-On the device, enable the USB gadget with the RemoteModel param, then plug the aux USB-C port into the Mac:
-
-  echo -n 1 > /data/params/d/RemoteModel
+The device presents the USB gadget on its aux USB-C port whenever openpilot is running, so just plug
+that port into the Mac. The gadget is dormant while the port is in host mode, e.g. with chestnut attached.
 """
 import os
 os.environ.setdefault('DEV', 'METAL')

@@ -6,8 +6,13 @@ so a Mac running remote_model_server can act as the USB host and drive the big m
 Runs as root and holds ep0 open for as long as the gadget should exist: closing ep0 tears the
 function down. modeld opens the data endpoints (ep1 IN, ep2 OUT) as the comma user.
 
+The gadget is bound all the time. It is dormant while the controller is in host mode (chestnut or
+another USB device on the aux port) and the kernel's type-c negotiation decides the role when a Mac
+is plugged in. --force-peripheral overrides that for bring-up, and the previous mode is restored on exit.
+
 Stdlib only, no openpilot imports: it re-execs itself under sudo and PYTHONPATH is not passed through.
 """
+import argparse
 import os
 import pwd
 import signal
@@ -120,8 +125,11 @@ def bind_udc() -> str:
   return udcs[0]
 
 
-def teardown() -> None:
-  for fn in (lambda: write(GADGET / "UDC", ""), lambda: set_controller_mode("host")):
+def teardown(restore_mode: str | None) -> None:
+  steps = [lambda: write(GADGET / "UDC", "")]
+  if restore_mode is not None:
+    steps.append(lambda: set_controller_mode(restore_mode))
+  for fn in steps:
     try:
       fn()
     except OSError as e:
@@ -147,8 +155,17 @@ def serve_ep0(ep0: int) -> None:
 
 
 def main() -> None:
+  p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+  p.add_argument("--force-peripheral", action="store_true", help="write 'peripheral' to the dwc3 mode sysfs instead of relying on type-c negotiation")
+  args = p.parse_args()
+
   if os.geteuid() != 0:
-    os.execvp("sudo", ["sudo", "-n", sys.executable, os.path.abspath(__file__)])
+    os.execvp("sudo", ["sudo", "-n", sys.executable, os.path.abspath(__file__), *sys.argv[1:]])
+
+  if not UDC_CLASS.exists() or not any(UDC_CLASS.iterdir()) or not CONFIGFS.exists():
+    log("no UDC or configfs on this device, gadget disabled")
+    while True:
+      time.sleep(3600)
 
   owner = pwd.getpwnam(OWNER)
   setup_configfs(owner.pw_uid, owner.pw_gid)
@@ -157,7 +174,10 @@ def main() -> None:
   os.write(ep0, descriptors())
   os.write(ep0, strings())
   udc = bind_udc()
-  set_controller_mode("peripheral")
+  restore_mode = None
+  if args.force_peripheral and CONTROLLER_MODE.exists():
+    restore_mode = CONTROLLER_MODE.read_text().strip()
+    set_controller_mode("peripheral")
   log(f"gadget up on {udc} as {USB_VID:04x}:{USB_PID:04x}, endpoints {EP_IN_FILE} {EP_OUT_FILE}")
 
   def on_signal(signum, frame):
@@ -168,7 +188,7 @@ def main() -> None:
     serve_ep0(ep0)
   finally:
     log("shutting down")
-    teardown()
+    teardown(restore_mode)
     os.close(ep0)
     time.sleep(0.5)
 
