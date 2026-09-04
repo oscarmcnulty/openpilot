@@ -26,11 +26,12 @@ from openpilot.common.transformations.model import get_warp_matrix
 from openpilot.selfdrive.controls.lib.desire_helper import DesireHelper
 from openpilot.selfdrive.controls.lib.drive_helpers import get_accel_from_plan, should_stop, smooth_value, get_curvature_from_plan
 from openpilot.selfdrive.modeld.parse_model_outputs import Parser
-from openpilot.selfdrive.modeld.compile_modeld import make_input_queues, WARP_INPUTS, POLICY_INPUTS
+from openpilot.selfdrive.modeld.compile_modeld import make_input_queues, get_policy_npy_shapes, WARP_INPUTS, POLICY_INPUTS
 from openpilot.selfdrive.modeld.fill_model_msg import fill_model_msg, fill_driving_model_data, fill_pose_msg, PublishState
 from openpilot.common.file_chunker import open_file_chunked
 from openpilot.selfdrive.modeld.constants import ModelConstants, Plan
 from openpilot.selfdrive.modeld.helpers import usbgpu_present, usbgpu_compiled, modeld_pkl_path, get_tg_input_devices, load_oob
+from openpilot.selfdrive.modeld.remote_model import RemotePolicyClient, remote_model_available
 
 PROCESS_NAME = "openpilot.selfdrive.modeld.modeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
@@ -137,25 +138,31 @@ class FrameMeta:
 class ModelState:
   prev_desire: np.ndarray  # for tracking the rising edge of the pulse
 
-  def __init__(self, cam_w: int, cam_h: int, usbgpu: bool):
+  def __init__(self, cam_w: int, cam_h: int, usbgpu: bool, remote: RemotePolicyClient | None = None):
+    # remote: the policy runs on a remote_model_server over USB. The warp still runs here, from the default pkl.
+    self.usbgpu = usbgpu
+    self.remote = remote
+    self.big = usbgpu or remote is not None
+    self.frame_skip = ModelConstants.MODEL_RUN_FREQ // ModelConstants.MODEL_CONTEXT_FREQ
+
     input_devices = get_tg_input_devices(PROCESS_NAME, usbgpu)
     self.WARP_DEV, self.QUEUE_DEV = input_devices['WARP_DEV'], input_devices['QUEUE_DEV']
     jits = load_oob(open_file_chunked(modeld_pkl_path(usbgpu)))
-    metadata = jits['metadata']
+    metadata = jits['metadata'] if remote is None else remote.connect(self.frame_skip)
     self.input_shapes = metadata['input_shapes']
     self.vision_input_names = [k for k in self.input_shapes if 'img' in k]
     self.output_slices = metadata['output_slices']
 
     self.prev_desire = np.zeros(ModelConstants.DESIRE_LEN, dtype=np.float32)
-    self.usbgpu = usbgpu
 
-    self.frame_skip = ModelConstants.MODEL_RUN_FREQ // ModelConstants.MODEL_CONTEXT_FREQ
+    # with a remote policy the queues live on the server, only the tfm and packed npy views are used here
     self.input_queues, self.npy = make_input_queues(self.input_shapes, self.frame_skip, device=self.QUEUE_DEV)
+    self.packed_keys = list(get_policy_npy_shapes(self.input_shapes)[0])
     self.full_frames: dict[str, Tensor] = {}
     self._blob_cache: dict[tuple[str, int], Tensor] = {}
     self.parser = Parser()
     self.frame_buf_params = {k: get_nv12_info(cam_w, cam_h) for k in ('img', 'big_img')}
-    self.run_policy = jits['run_policy']
+    self.run_policy = jits['run_policy'] if remote is None else None
     self.warp = jits[(cam_w,cam_h)]
 
   def slice_outputs(self, model_outputs: np.ndarray, output_slices: dict[str, slice]) -> dict[str, np.ndarray]:
@@ -184,11 +191,15 @@ class ModelState:
 
     warped = self.warp(**{k: self.input_queues[k] for k in WARP_INPUTS}, frame=self.full_frames['img'], big_frame=self.full_frames['big_img'])
 
-    outs, = self.run_policy(
-      **{k: self.input_queues[k] for k in POLICY_INPUTS if k in self.input_queues}, warped=warped
-    )
-    model_output = outs.numpy()[0]
-    if self.usbgpu and not np.all(np.isfinite(model_output)):
+    if self.remote is not None:
+      packed = np.concatenate([self.npy[k].ravel() for k in self.packed_keys])
+      model_output = self.remote.run(warped.numpy(), packed)
+    else:
+      outs, = self.run_policy(
+        **{k: self.input_queues[k] for k in POLICY_INPUTS if k in self.input_queues}, warped=warped
+      )
+      model_output = outs.numpy()[0]
+    if self.big and not np.all(np.isfinite(model_output)):
       # TODO remove with prev_feat
       cloudlog.error("model output not finite, dropping frame")
       return None
@@ -205,19 +216,28 @@ class ModelState:
     dims = {'desire_pulse': ModelConstants.DESIRE_LEN, 'traffic_convention': 2, 'action_t': 2}
     self.run(dummy_frames, dict.fromkeys(self.vision_input_names, eye), {k: np.zeros(v, dtype=np.float32) for k, v in dims.items()})
     self.input_queues, self.npy = make_input_queues(self.input_shapes, self.frame_skip, device=self.QUEUE_DEV)
+    if self.remote is not None:
+      self.remote.reset()
     self.prev_desire[:] = 0
     self.full_frames.clear()
     self._blob_cache.clear()
+
+  def close(self) -> None:
+    if self.remote is not None:
+      self.remote.close()
 
 
 def main(demo=False):
   cloudlog.warning("modeld init")
 
   USBGPU = usbgpu_present() and usbgpu_compiled()
+  REMOTE = not USBGPU and remote_model_available()
+  BIG = USBGPU or REMOTE
   if USBGPU:
     os.environ['HCQDEV_WAIT_TIMEOUT_MS'] = '3000'
   params = Params()
-  params.put_bool("UsbGpuLoading", USBGPU)
+  # the UsbGpu* params also cover a remote big model, selfdrived gates on them
+  params.put_bool("UsbGpuLoading", BIG)
   params.remove("UsbGpuActive")
 
   config_realtime_process(7, 54)
@@ -248,23 +268,26 @@ def main(demo=False):
   st = time.monotonic()
   cloudlog.warning("loading model")
   model = None
-  if USBGPU:
+  if BIG:
     big_model = None
     def load_big():
       nonlocal big_model
+      remote = RemotePolicyClient() if REMOTE else None
       try:
-        m = ModelState(vipc_client_main.width, vipc_client_main.height, True)
+        m = ModelState(vipc_client_main.width, vipc_client_main.height, USBGPU, remote)
         m.warmup()
         big_model = m
       except Exception:
         cloudlog.exception("big model load failed")
+        if remote is not None:
+          remote.close()
     loader = threading.Thread(target=load_big, daemon=True)
     loader.start()
     loader.join(BIG_MODEL_TIMEOUT)
     model = big_model
     params.put_bool("UsbGpuActive", model is not None)
 
-  small_model = ModelState(vipc_client_main.width, vipc_client_main.height, False) if model is None or USBGPU else None
+  small_model = ModelState(vipc_client_main.width, vipc_client_main.height, False) if model is None or BIG else None
   if model is None:
     model = small_model
   params.put_bool("UsbGpuLoading", False)
@@ -392,6 +415,7 @@ def main(demo=False):
       # fallback to small model
       cloudlog.exception("big model failed, fall back to small")
       params.put_bool("UsbGpuActive", False)
+      model.close()
       model = small_model
       if chestnut_state is not None:
         chestnut_state.big = False
@@ -410,7 +434,7 @@ def main(demo=False):
       fill_model_msg(modelv2_send, model_output, action,
                      publish_state, meta_main.frame_id, meta_extra.frame_id, frame_id,
                      frame_drop_ratio, meta_main.timestamp_eof, model_execution_time, extrinsics_calibration_seen)
-      modelv2_send.modelV2.big = model.usbgpu
+      modelv2_send.modelV2.big = model.big
 
       desire_state = modelv2_send.modelV2.meta.desireState
       l_lane_change_prob = desire_state[log.Desire.laneChangeLeft]

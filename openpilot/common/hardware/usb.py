@@ -7,6 +7,15 @@ CHESTNUT_ROM_USB_IDS = ((0x174C, 0x2464), (0x174C, 0x2463))
 USB_DEVICES_PATH = Path("/sys/bus/usb/devices")
 TYPEC_CC_ORIENTATION_PATH = Path("/sys/class/power_supply/usb/typec_cc_orientation")
 PRIMARY_USB_CONTROLLER = "a600000.ssusb"
+UDC_PATH = Path("/sys/class/udc")
+
+
+def usb_gadget_configured() -> bool:
+  """True when this device is in USB gadget mode and a host has enumerated and configured it."""
+  try:
+    return any((d / "state").read_text().strip() == "configured" for d in UDC_PATH.iterdir())
+  except OSError:
+    return False
 
 
 def get_usb_topology() -> set[str]:

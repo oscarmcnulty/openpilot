@@ -49,6 +49,9 @@ def not_long_maneuver(started: bool, params: Params, CP: car.CarParams) -> bool:
 def qcomgps(started: bool, params: Params, CP: car.CarParams) -> bool:
   return started and not ublox_available()
 
+def remote_model(started: bool, params: Params, CP: car.CarParams) -> bool:
+  return params.get_bool("RemoteModel")
+
 def always_run(started: bool, params: Params, CP: car.CarParams) -> bool:
   return True
 
@@ -84,6 +87,7 @@ procs = [
   PythonProcess("journald", "openpilot.system.journald", only_onroad, platform.system() != "Darwin"),
   PythonProcess("micd", "openpilot.system.micd", iscar),
   PythonProcess("timed", "openpilot.system.timed", always_run, enabled=not PC),
+  PythonProcess("remote_model_gadget", "openpilot.system.hardware.tici.remote_model_gadget", remote_model, enabled=not PC),
 
   PythonProcess("modeld", "openpilot.selfdrive.modeld.modeld", only_onroad),
   PythonProcess("dmonitoringmodeld", "openpilot.selfdrive.modeld.dmonitoringmodeld", driverview, enabled=(WEBCAM or not PC)),
