@@ -214,7 +214,8 @@ class RemotePolicyClient:
     if packed.size != self.packed_len:
       raise RemoteModelError(f"bad packed input len {packed.size}, want {self.packed_len}")
     payload = np.ascontiguousarray(warped).tobytes() + np.ascontiguousarray(packed, dtype=np.float32).tobytes()
-    out = np.frombuffer(self._request(MSG_RUN, payload, self.run_timeout), dtype=np.float32)
+    # copy: frombuffer is read-only and the parser works in place
+    out = np.frombuffer(self._request(MSG_RUN, payload, self.run_timeout), dtype=np.float32).copy()
     if out.size != self.out_len:
       raise RemoteModelError(f"bad output len {out.size}, want {self.out_len}")
     return out

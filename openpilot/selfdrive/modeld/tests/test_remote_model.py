@@ -94,6 +94,7 @@ class TestRemoteModel(unittest.TestCase):
     packed = np.arange(StubPolicy.packed_len, dtype=np.float32)
     out = self.client.run(warped, packed)
     self.assertEqual(out.dtype, np.float32)
+    self.assertTrue(out.flags.writeable)  # the parser modifies outputs in place
     np.testing.assert_allclose(out, [warped.sum(), packed.sum(), 1, 7, 0])
     self.assertEqual(self.client.run(warped, packed)[2], 2)
     self.client.reset()
