@@ -5,9 +5,10 @@ On the Mac, from the openpilot repo root with the venv active:
 
   python -m openpilot.selfdrive.modeld.remote_model_server --onnx openpilot/selfdrive/modeld/models/big_driving_supercombo.onnx
 
-Defaults to tinygrad's METAL backend with FLOAT16; override with DEV=... FLOAT16=0 in the environment.
-The model is compiled from the onnx on every start. tinygrad keeps compiled kernels in its cache
-(~/Library/Caches/tinygrad on macOS), so only the first start pays for compilation.
+Defaults to tinygrad's METAL backend with FLOAT16 and BEAM=2 kernel search; override any of them in
+the environment. The model is compiled from the onnx on every start. tinygrad keeps compiled kernels in
+its cache (~/Library/Caches/tinygrad on macOS), so only the first start pays for compilation and the
+search, which take several minutes.
 The warmup prints per-run timings, which doubles as the benchmark: the whole 20Hz budget is 50ms
 and the link takes a share of it.
 
@@ -17,6 +18,7 @@ that port into the Mac. The gadget is dormant while the port is in host mode, e.
 import os
 os.environ.setdefault('DEV', 'METAL')
 os.environ.setdefault('FLOAT16', '1')
+os.environ.setdefault('BEAM', '2')  # kernel search, 56ms -> 35ms per frame on an Apple GPU. slow first compile, cached after
 
 import argparse
 import time
