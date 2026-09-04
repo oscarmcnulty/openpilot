@@ -27,6 +27,7 @@ import usb1
 
 from tinygrad.tensor import Tensor
 from tinygrad.device import Device
+from tinygrad.dtype import dtypes
 from tinygrad.engine.jit import TinyJit
 from tinygrad.nn.onnx import OnnxRunner
 
@@ -50,17 +51,37 @@ class TinygradPolicy:
     self.npy_shapes, sizes = get_policy_npy_shapes(input_shapes)
     self.packed_len = sum(sizes)
     self.split_idx = np.cumsum(sizes[:-1])
+    # one persistent input buffer, written in place each frame. METAL memory is unified, so this is a memcpy
+    # with no allocation or copy kernel; devices without a host-visible buffer fall back to a fresh tensor.
+    self.warped_t = Tensor.zeros(*self.warped_shape, dtype=dtypes.uint8, device=self.dev).contiguous().realize()
+    try:
+      self.warped_mv: memoryview | None = self.warped_t.uop.buffer.as_memoryview()
+    except Exception:
+      self.warped_mv = None
+    self.timings = {'copyin': 0.0, 'enqueue': 0.0, 'gpu': 0.0, 'copyout': 0.0}
     self.reset()
 
   def reset(self) -> None:
     self.input_queues, self.npy = make_input_queues(self.input_shapes, self.frame_skip, device=self.dev)
 
   def run(self, warped: np.ndarray, packed: np.ndarray) -> np.ndarray:
+    t0 = time.perf_counter()
     for (k, s), chunk in zip(self.npy_shapes.items(), np.split(packed, self.split_idx), strict=True):
       self.npy[k][:] = chunk.reshape(s)
-    warped_t = Tensor(warped, device=self.dev).realize()
+    if self.warped_mv is not None:
+      self.warped_mv[:] = memoryview(np.ascontiguousarray(warped)).cast('B')
+      warped_t = self.warped_t
+    else:
+      warped_t = Tensor(warped, device=self.dev).realize()
+    t1 = time.perf_counter()
     out, = self.run_policy(**{k: self.input_queues[k] for k in POLICY_INPUTS}, warped=warped_t)
-    return out.numpy()[0]
+    t2 = time.perf_counter()
+    Device[self.dev].synchronize()
+    t3 = time.perf_counter()
+    result = out.numpy()[0]
+    t4 = time.perf_counter()
+    self.timings = {'copyin': (t1 - t0) * 1e3, 'enqueue': (t2 - t1) * 1e3, 'gpu': (t3 - t2) * 1e3, 'copyout': (t4 - t3) * 1e3}
+    return result
 
   def warmup(self, n: int = WARMUP_RUNS) -> int:
     """Captures the JIT and reports timings. Returns the output length."""
@@ -71,7 +92,8 @@ class TinygradPolicy:
       packed = rng.standard_normal(self.packed_len).astype(np.float32)
       st = time.perf_counter()
       out = self.run(warped, packed)
-      print(f"  warmup [{i+1}/{n}] {(time.perf_counter() - st) * 1e3:7.2f} ms", flush=True)
+      breakdown = ' '.join(f"{k} {v:.2f}" for k, v in self.timings.items())
+      print(f"  warmup [{i+1}/{n}] {(time.perf_counter() - st) * 1e3:7.2f} ms  ({breakdown})", flush=True)
     self.reset()
     assert out is not None
     return out.size

@@ -143,6 +143,8 @@ class UsbLink(Link):
 
 
 def remote_model_available() -> bool:
+  if os.getenv("NO_REMOTE_MODEL"):  # force the on-device model, e.g. for A/B replays with the host still attached
+    return False
   return usb_gadget_configured() and os.path.exists(EP_IN_FILE) and os.path.exists(EP_OUT_FILE)
 
 
