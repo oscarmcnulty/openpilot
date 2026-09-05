@@ -126,7 +126,7 @@ class HudRenderer(Widget):
     button_y = rect.y + UI_CONFIG.border_size
     self._exp_button.render(rl.Rectangle(button_x, button_y, UI_CONFIG.button_size, UI_CONFIG.button_size))
 
-    if ui_state.usbgpu and (ui_state.usbgpu_compiled or ui_state.remote_model):
+    if ui_state.usbgpu:  # a remote model host has no compiled pickle on the device, so no usbgpu_compiled gate here
       self._draw_model_source(button_x, button_y + UI_CONFIG.button_size + 24)
 
   def _draw_model_source(self, x: float, y: float) -> None:

@@ -78,7 +78,6 @@ class UIState:
     self.experimental_mode: bool = self.params.get_bool("ExperimentalMode")
     self.experimental_mode_confirmed: bool = self.params.get_bool("ExperimentalModeConfirmed")
     self.usbgpu: bool = False
-    self.remote_model: bool = False  # a remote model host on USB, latched for the drive like usbgpu
     self.big_model_failed: bool = False
     self.big_model_loading: bool = False
     self.usbgpu_compiled: bool = usbgpu_compiled()
@@ -219,13 +218,12 @@ class UIState:
 
 
   def _update_big_model(self) -> None:
-    """Big model status for the HUDs, from chestnut or a remote model host on USB."""
-    ds = self.sm["deviceState"]
+    """Big model status for the comma three HUD. chestnutPresent also covers a remote model host on USB."""
+    present = self.sm["deviceState"].chestnutPresent
     # keep the UI active until the offroad transition when the device disappears mid-drive
-    self.remote_model = ds.remoteModelPresent or (self.remote_model and self.started)
-    self.usbgpu = ds.chestnutPresent or self.remote_model or (self.usbgpu and self.started)
+    self.usbgpu = present or (self.usbgpu and self.started)
     model_seen = self.sm.recv_frame['modelV2'] > self.started_frame
-    self.big_model_failed = (self.usbgpu_active is False or not (ds.chestnutPresent or ds.remoteModelPresent) or
+    self.big_model_failed = (self.usbgpu_active is False or not present or
                              (self.usbgpu_active is True and model_seen and not self.sm.alive['modelV2']) or
                              (self.usbgpu_active is None and model_seen))
     self.big_model_loading = self.usbgpu_loading or (self.usbgpu_active is None and not self.big_model_failed)

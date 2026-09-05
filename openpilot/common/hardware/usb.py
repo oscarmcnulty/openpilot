@@ -75,7 +75,9 @@ def get_usb_state() -> list[dict]:
   return devices
 
 
-def set_usb_state(device_state, devices: list[dict]) -> None:
+def set_usb_state(device_state, devices: list[dict]) -> bool:
+  """Fills deviceState.usbState. Returns whether a real chestnut is attached; deviceState.chestnutPresent also
+  covers a remote model host that has configured our USB gadget, since the rest of openpilot treats both the same."""
   entries = device_state.usbState.init('devices', len(devices))
 
   chestnut_present = False
@@ -93,5 +95,5 @@ def set_usb_state(device_state, devices: list[dict]) -> None:
     if (entry.vendorId, entry.productId) in CHESTNUT_USB_IDS:
       chestnut_present = True
 
-  device_state.chestnutPresent = chestnut_present
-  device_state.remoteModelPresent = usb_gadget_configured()
+  device_state.chestnutPresent = chestnut_present or usb_gadget_configured()
+  return chestnut_present
