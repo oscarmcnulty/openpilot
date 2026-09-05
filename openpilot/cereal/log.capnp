@@ -420,6 +420,7 @@ struct DeviceState @0xa4d8b5af2aa492eb {
 
   # usb
   chestnutPresent @51 :Bool;
+  remoteModelPresent @53 :Bool;  # a remote model host has configured the USB gadget
   usbState @52 :UsbState;
 
   networkType @22 :NetworkType;

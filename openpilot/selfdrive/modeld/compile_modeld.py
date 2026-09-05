@@ -155,6 +155,7 @@ def make_input_queues(input_shapes, frame_skip, device):
   packed_npy_inputs = np.zeros(sum(sizes), dtype=np.float32)
   # views into the packed inputs, to be refilled at runtime
   npy.update({k: v.reshape(s) for (k, s), v in zip(shapes.items(), np.split(packed_npy_inputs, np.cumsum(sizes[:-1])), strict=True)})
+  npy['packed'] = packed_npy_inputs  # the whole packed array, what a remote policy host receives per frame
   input_queues.update({
     'feat_q': Tensor(np.zeros((frame_skip * fb[1], fb[0], fb[2]), dtype=np.float32), device=device).contiguous().realize(),
     'desire_q': Tensor(np.zeros((frame_skip * dp[1], dp[0], dp[2]), dtype=np.float32), device=device).contiguous().realize(),

@@ -26,12 +26,13 @@ from openpilot.common.transformations.model import get_warp_matrix
 from openpilot.selfdrive.controls.lib.desire_helper import DesireHelper
 from openpilot.selfdrive.controls.lib.drive_helpers import get_accel_from_plan, should_stop, smooth_value, get_curvature_from_plan
 from openpilot.selfdrive.modeld.parse_model_outputs import Parser
-from openpilot.selfdrive.modeld.compile_modeld import make_input_queues, get_policy_npy_shapes, WARP_INPUTS, POLICY_INPUTS
+from openpilot.selfdrive.modeld.compile_modeld import make_input_queues, WARP_INPUTS, POLICY_INPUTS
 from openpilot.selfdrive.modeld.fill_model_msg import fill_model_msg, fill_driving_model_data, fill_pose_msg, PublishState
 from openpilot.common.file_chunker import open_file_chunked
 from openpilot.selfdrive.modeld.constants import ModelConstants, Plan
 from openpilot.selfdrive.modeld.helpers import usbgpu_present, usbgpu_compiled, modeld_pkl_path, get_tg_input_devices, load_oob
-from openpilot.selfdrive.modeld.remote_model import RemotePolicyClient, remote_model_available
+from openpilot.selfdrive.modeld.remote_model import RemotePolicyClient
+from openpilot.common.hardware.usb import usb_gadget_configured
 
 PROCESS_NAME = "openpilot.selfdrive.modeld.modeld"
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
@@ -155,14 +156,13 @@ class ModelState:
 
     self.prev_desire = np.zeros(ModelConstants.DESIRE_LEN, dtype=np.float32)
 
-    # with a remote policy the queues live on the server, only the tfm and packed npy views are used here
+    # with a remote policy the queues live on the host, only the tfm and packed npy views are used here
     self.input_queues, self.npy = make_input_queues(self.input_shapes, self.frame_skip, device=self.QUEUE_DEV)
-    self.packed_keys = list(get_policy_npy_shapes(self.input_shapes)[0])
     self.full_frames: dict[str, Tensor] = {}
     self._blob_cache: dict[tuple[str, int], Tensor] = {}
     self.parser = Parser()
     self.frame_buf_params = {k: get_nv12_info(cam_w, cam_h) for k in ('img', 'big_img')}
-    self.run_policy = jits['run_policy'] if remote is None else None
+    self.run_policy = jits['run_policy']
     self.warp = jits[(cam_w,cam_h)]
 
   def slice_outputs(self, model_outputs: np.ndarray, output_slices: dict[str, slice]) -> dict[str, np.ndarray]:
@@ -192,8 +192,7 @@ class ModelState:
     warped = self.warp(**{k: self.input_queues[k] for k in WARP_INPUTS}, frame=self.full_frames['img'], big_frame=self.full_frames['big_img'])
 
     if self.remote is not None:
-      packed = np.concatenate([self.npy[k].ravel() for k in self.packed_keys])
-      model_output = self.remote.run(warped.numpy(), packed)
+      model_output = self.remote.run(warped.numpy(), self.npy['packed'])
     else:
       outs, = self.run_policy(
         **{k: self.input_queues[k] for k in POLICY_INPUTS if k in self.input_queues}, warped=warped
@@ -217,21 +216,17 @@ class ModelState:
     self.run(dummy_frames, dict.fromkeys(self.vision_input_names, eye), {k: np.zeros(v, dtype=np.float32) for k, v in dims.items()})
     self.input_queues, self.npy = make_input_queues(self.input_shapes, self.frame_skip, device=self.QUEUE_DEV)
     if self.remote is not None:
-      self.remote.reset()
+      self.remote.connect(self.frame_skip)  # resets the host's queues too
     self.prev_desire[:] = 0
     self.full_frames.clear()
     self._blob_cache.clear()
-
-  def close(self) -> None:
-    if self.remote is not None:
-      self.remote.close()
 
 
 def main(demo=False):
   cloudlog.warning("modeld init")
 
   USBGPU = usbgpu_present() and usbgpu_compiled()
-  REMOTE = not USBGPU and remote_model_available()
+  REMOTE = not USBGPU and usb_gadget_configured()
   BIG = USBGPU or REMOTE
   if USBGPU:
     os.environ['HCQDEV_WAIT_TIMEOUT_MS'] = '3000'
@@ -272,15 +267,12 @@ def main(demo=False):
     big_model = None
     def load_big():
       nonlocal big_model
-      remote = RemotePolicyClient() if REMOTE else None
       try:
-        m = ModelState(vipc_client_main.width, vipc_client_main.height, USBGPU, remote)
+        m = ModelState(vipc_client_main.width, vipc_client_main.height, USBGPU, RemotePolicyClient() if REMOTE else None)
         m.warmup()
         big_model = m
       except Exception:
         cloudlog.exception("big model load failed")
-        if remote is not None:
-          remote.close()
     loader = threading.Thread(target=load_big, daemon=True)
     loader.start()
     loader.join(BIG_MODEL_TIMEOUT)
@@ -415,7 +407,6 @@ def main(demo=False):
       # fallback to small model
       cloudlog.exception("big model failed, fall back to small")
       params.put_bool("UsbGpuActive", False)
-      model.close()
       model = small_model
       if chestnut_state is not None:
         chestnut_state.big = False

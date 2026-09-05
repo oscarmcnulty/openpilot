@@ -13,7 +13,6 @@ from openpilot.selfdrive.ui.lib.prime_state import PrimeState
 from openpilot.system.ui.lib.application import gui_app
 from openpilot.common.hardware import HARDWARE, PC
 from openpilot.selfdrive.modeld.helpers import usbgpu_compiled
-from openpilot.common.hardware.usb import usb_gadget_configured
 
 BACKLIGHT_OFFROAD = 65 if HARDWARE.get_device_type() == "mici" else 50
 PARAM_UPDATE_TIME = 1 / 5.0
@@ -79,8 +78,9 @@ class UIState:
     self.experimental_mode: bool = self.params.get_bool("ExperimentalMode")
     self.experimental_mode_confirmed: bool = self.params.get_bool("ExperimentalModeConfirmed")
     self.usbgpu: bool = False
-    self.big_model_present: bool = False  # live: chestnut attached, or a remote model host has the USB gadget configured
-    self.remote_model_present: bool = False  # latched for the drive, like usbgpu
+    self.remote_model: bool = False  # a remote model host on USB, latched for the drive like usbgpu
+    self.big_model_failed: bool = False
+    self.big_model_loading: bool = False
     self.usbgpu_compiled: bool = usbgpu_compiled()
     self.usbgpu_active: bool | None = self.params.get("UsbGpuActive")
     self.usbgpu_loading: bool = self.params.get_bool("UsbGpuLoading")
@@ -129,6 +129,7 @@ class UIState:
     self.sm.update(0)
     self._update_state()
     self._update_status()
+    self._update_big_model()
     device.update()
 
   def _params_refresh_worker(self):
@@ -211,15 +212,23 @@ class UIState:
     self.always_on_dm = self.params.get_bool("AlwaysOnDM")
     self.experimental_mode = self.params.get_bool("ExperimentalMode")
     self.experimental_mode_confirmed = self.params.get_bool("ExperimentalModeConfirmed")
-    # keep usbgpu UI active until offroad transition when gpu disappears
-    gadget = usb_gadget_configured()
-    self.big_model_present = self.sm["deviceState"].chestnutPresent or gadget
-    self.remote_model_present = gadget or (self.remote_model_present and self.started)
-    self.usbgpu = self.big_model_present or (self.usbgpu and self.started)
     if not self.usbgpu_compiled:
       self.usbgpu_compiled = usbgpu_compiled()
     self.usbgpu_active = self.params.get("UsbGpuActive")
     self.usbgpu_loading = self.params.get_bool("UsbGpuLoading")
+
+
+  def _update_big_model(self) -> None:
+    """Big model status for the HUDs, from chestnut or a remote model host on USB."""
+    ds = self.sm["deviceState"]
+    # keep the UI active until the offroad transition when the device disappears mid-drive
+    self.remote_model = ds.remoteModelPresent or (self.remote_model and self.started)
+    self.usbgpu = ds.chestnutPresent or self.remote_model or (self.usbgpu and self.started)
+    model_seen = self.sm.recv_frame['modelV2'] > self.started_frame
+    self.big_model_failed = (self.usbgpu_active is False or not (ds.chestnutPresent or ds.remoteModelPresent) or
+                             (self.usbgpu_active is True and model_seen and not self.sm.alive['modelV2']) or
+                             (self.usbgpu_active is None and model_seen))
+    self.big_model_loading = self.usbgpu_loading or (self.usbgpu_active is None and not self.big_model_failed)
 
 
 class Device:

@@ -191,7 +191,7 @@ class HudRenderer(Widget):
     if self.is_cruise_set:
       self._draw_set_speed(rect)
 
-    if ui_state.usbgpu and (ui_state.usbgpu_compiled or ui_state.remote_model_present):
+    if ui_state.usbgpu and (ui_state.usbgpu_compiled or ui_state.remote_model):
       self._draw_model_source(rect)
 
     self._draw_steering_wheel(rect)
@@ -200,12 +200,8 @@ class HudRenderer(Widget):
     if ui_state.sm.recv_frame['selfdriveState'] < ui_state.started_frame:
       return
 
-    big_failed = (ui_state.usbgpu_active is False or not ui_state.big_model_present or
-                  (ui_state.usbgpu_active is True and ui_state.sm.recv_frame['modelV2'] > ui_state.started_frame and
-                   not ui_state.sm.alive['modelV2']) or
-                  (ui_state.usbgpu_active is None and ui_state.sm.recv_frame['modelV2'] > ui_state.started_frame))
+    big_failed, loading = ui_state.big_model_failed, ui_state.big_model_loading
     self._small_model_engaged &= big_failed
-    loading = ui_state.usbgpu_loading or (ui_state.usbgpu_active is None and not big_failed)
     if loading:
       pulse = 0.5 - 0.5 * math.cos(rl.get_time() * 6.0)
       icon = self._txt_egpu
