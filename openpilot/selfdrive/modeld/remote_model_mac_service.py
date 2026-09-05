@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
-"""Install remote_model_server as a macOS launchd user agent.
+"""Install remote_model_server as a macOS launchd user agent that runs only while a comma is around.
 
-  python -m openpilot.selfdrive.modeld.remote_model_mac_service install            # start at login, keep running
-  python -m openpilot.selfdrive.modeld.remote_model_mac_service install --on-attach  # start when the comma is plugged in
+  python -m openpilot.selfdrive.modeld.remote_model_mac_service install [--idle-timeout 300]
   python -m openpilot.selfdrive.modeld.remote_model_mac_service status | uninstall
 
-The default keeps the server up with the model loaded so the device connects the moment it is plugged
-in. --on-attach uses launchd's IOKit matching on the gadget's USB ids instead, so nothing runs until
-a comma device appears. Either way the server holds the Mac awake only while a device is connected.
+launchd starts the server when a USB device with the gadget's vendor and product id appears (IOKit
+matching), the server holds the Mac awake while the device is connected, and it exits after
+--idle-timeout seconds without a device. launchd then starts it again on the next attach.
 Logs go to ~/Library/Logs/openpilot-remote-model.log.
 """
 import argparse
@@ -25,13 +24,16 @@ LOG = Path.home() / "Library" / "Logs" / "openpilot-remote-model.log"
 REPO = Path(__file__).resolve().parents[3]
 
 
-def make_plist(on_attach: bool, onnx: str | None) -> dict:
+def make_plist(idle_timeout: float, onnx: str | None) -> dict:
   # the venv python, not resolved: following the symlink lands on the base interpreter without the venv packages
   venv_python = REPO / ".venv" / "bin" / "python"
   python = venv_python if venv_python.exists() else Path(sys.executable)
-  args = [str(python), "-m", "openpilot.selfdrive.modeld.remote_model_server"]
+  args = [str(python), "-m", "openpilot.selfdrive.modeld.remote_model_server", "--idle-timeout", str(idle_timeout)]
   if onnx:
     args += ["--onnx", onnx]
+  # one entry per provider class: modern macOS publishes IOUSBHostDevice, the legacy IOUSBDevice nub still exists
+  usb_match = {f"comma-remote-model-{cls}": {"IOProviderClass": cls, "idVendor": USB_VID, "idProduct": USB_PID, "IOMatchLaunchStream": True}
+               for cls in ("IOUSBHostDevice", "IOUSBDevice")}
   plist: dict = {
     "Label": LABEL,
     "ProgramArguments": args,
@@ -45,23 +47,10 @@ def make_plist(on_attach: bool, onnx: str | None) -> dict:
     "StandardErrorPath": str(LOG),
     "ProcessType": "Interactive",  # no App Nap or background throttling for the model
     "ThrottleInterval": 5,
+    "RunAtLoad": False,
+    "KeepAlive": False,  # the server exits itself after idle_timeout, launchd relaunches on the next attach
+    "LaunchEvents": {"com.apple.iokit.matching": usb_match},
   }
-  if on_attach:
-    plist["RunAtLoad"] = False
-    plist["KeepAlive"] = False
-    plist["LaunchEvents"] = {
-      "com.apple.iokit.matching": {
-        "comma-remote-model-gadget": {
-          "IOProviderClass": "IOUSBHostDevice",
-          "idVendor": USB_VID,
-          "idProduct": USB_PID,
-          "IOMatchLaunchStream": True,
-        },
-      },
-    }
-  else:
-    plist["RunAtLoad"] = True
-    plist["KeepAlive"] = True
   return plist
 
 
@@ -73,8 +62,8 @@ def domain() -> str:
   return f"gui/{os.getuid()}"
 
 
-def install(on_attach: bool, onnx: str | None, dry_run: bool) -> None:
-  plist = make_plist(on_attach, onnx)
+def install(idle_timeout: float, onnx: str | None, dry_run: bool) -> None:
+  plist = make_plist(idle_timeout, onnx)
   data = plistlib.dumps(plist)
   if dry_run:
     print(data.decode())
@@ -86,11 +75,7 @@ def install(on_attach: bool, onnx: str | None, dry_run: bool) -> None:
   launchctl("bootout", domain(), str(PLIST))  # replace an existing agent, ignore "not loaded"
   PLIST.write_bytes(data)
   launchctl("bootstrap", domain(), str(PLIST), check=True)
-  mode = "on USB attach" if on_attach else "at login, kept alive"
-  print(f"installed {PLIST} ({mode}), log: {LOG}")
-  if not on_attach:
-    launchctl("kickstart", "-k", f"{domain()}/{LABEL}")
-    print("started")
+  print(f"installed {PLIST}: starts on USB attach, exits after {idle_timeout:.0f}s without a device, log: {LOG}")
 
 
 def uninstall() -> None:
@@ -114,12 +99,12 @@ def status() -> None:
 def main() -> None:
   p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
   p.add_argument("action", choices=["install", "uninstall", "status"])
-  p.add_argument("--on-attach", action="store_true", help="launch when the comma gadget appears on USB instead of at login")
+  p.add_argument("--idle-timeout", type=float, default=300, help="seconds without a device before the server exits to standby")
   p.add_argument("--onnx", help="model path passed to the server, default is the big model in the repo")
   p.add_argument("--dry-run", action="store_true", help="print the plist instead of installing")
   args = p.parse_args()
   if args.action == "install":
-    install(args.on_attach, args.onnx, args.dry_run)
+    install(args.idle_timeout, args.onnx, args.dry_run)
   elif args.action == "uninstall":
     uninstall()
   else:

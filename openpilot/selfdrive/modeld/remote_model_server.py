@@ -14,6 +14,9 @@ and the link takes a share of it.
 
 The device presents the USB gadget on its aux USB-C port whenever openpilot is running, so just plug
 that port into the Mac. The gadget is dormant while the port is in host mode, e.g. with chestnut attached.
+
+With --idle-timeout the server exits after that long without a device, which is how the launchd agent
+installed by remote_model_mac_service returns to standby: launchd starts it again on the next USB attach.
 """
 import os
 os.environ.setdefault('DEV', 'METAL')
@@ -158,6 +161,7 @@ class KeepAwake:
 def main():
   p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
   p.add_argument('--onnx', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models', 'big_driving_supercombo.onnx'))
+  p.add_argument('--idle-timeout', type=float, default=0, help='exit after this many seconds without a device, 0 waits forever')
   args = p.parse_args()
 
   frame_skip = ModelConstants.MODEL_RUN_FREQ // ModelConstants.MODEL_CONTEXT_FREQ
@@ -176,6 +180,7 @@ def main():
   }, frame_skip)
 
   print(f"waiting for the device ({USB_VID:04x}:{USB_PID:04x}) on USB", flush=True)
+  idle_since = time.monotonic()
   with usb1.USBContext() as ctx:
     while True:
       try:
@@ -184,6 +189,9 @@ def main():
         print(f"device found but could not be opened: {e}", flush=True)
         handle = None
       if handle is None:
+        if args.idle_timeout > 0 and time.monotonic() - idle_since > args.idle_timeout:
+          print(f"no device for {args.idle_timeout:.0f}s, exiting to standby", flush=True)
+          return
         time.sleep(1.0)
         continue
       print("device connected", flush=True)
@@ -198,6 +206,7 @@ def main():
       finally:
         link.close()
       print("device disconnected", flush=True)
+      idle_since = time.monotonic()
       time.sleep(0.5)
 
 
