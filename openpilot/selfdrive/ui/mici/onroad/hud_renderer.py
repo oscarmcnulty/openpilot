@@ -191,7 +191,7 @@ class HudRenderer(Widget):
     if self.is_cruise_set:
       self._draw_set_speed(rect)
 
-    if ui_state.usbgpu and ui_state.usbgpu_compiled:
+    if ui_state.usbgpu and (ui_state.usbgpu_compiled or ui_state.remote_model_present):
       self._draw_model_source(rect)
 
     self._draw_steering_wheel(rect)
@@ -200,7 +200,7 @@ class HudRenderer(Widget):
     if ui_state.sm.recv_frame['selfdriveState'] < ui_state.started_frame:
       return
 
-    big_failed = (ui_state.usbgpu_active is False or not ui_state.sm['deviceState'].chestnutPresent or
+    big_failed = (ui_state.usbgpu_active is False or not ui_state.big_model_present or
                   (ui_state.usbgpu_active is True and ui_state.sm.recv_frame['modelV2'] > ui_state.started_frame and
                    not ui_state.sm.alive['modelV2']) or
                   (ui_state.usbgpu_active is None and ui_state.sm.recv_frame['modelV2'] > ui_state.started_frame))
