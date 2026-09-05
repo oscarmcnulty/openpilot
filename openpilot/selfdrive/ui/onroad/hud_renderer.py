@@ -1,3 +1,4 @@
+import math
 import pyray as rl
 from dataclasses import dataclass
 from openpilot.common.constants import CV
@@ -23,6 +24,7 @@ class UIConfig:
   set_speed_width_imperial: int = 172
   set_speed_height: int = 204
   wheel_icon_size: int = 144
+  egpu_icon_size: tuple[int, int] = (96, 71)
 
 
 @dataclass(frozen=True)
@@ -72,6 +74,11 @@ class HudRenderer(Widget):
 
     self._exp_button: ExpButton = ExpButton(UI_CONFIG.button_size, UI_CONFIG.wheel_icon_size)
 
+    w, h = UI_CONFIG.egpu_icon_size
+    self._txt_egpu: rl.Texture = gui_app.texture('icons_mici/egpu.png', w, h)
+    self._txt_egpu_green: rl.Texture = gui_app.texture('icons_mici/egpu_green.png', w, h)
+    self._txt_egpu_orange: rl.Texture = gui_app.texture('icons_mici/egpu_orange.png', w, h)
+
   def _update_state(self) -> None:
     """Update HUD state based on car state and controls state."""
     sm = ui_state.sm
@@ -120,6 +127,30 @@ class HudRenderer(Widget):
     button_x = rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_size
     button_y = rect.y + UI_CONFIG.border_size
     self._exp_button.render(rl.Rectangle(button_x, button_y, UI_CONFIG.button_size, UI_CONFIG.button_size))
+
+    if ui_state.usbgpu and (ui_state.usbgpu_compiled or ui_state.remote_model_present):
+      self._draw_model_source(button_x, button_y + UI_CONFIG.button_size + 24)
+
+  def _draw_model_source(self, x: float, y: float) -> None:
+    """Big model status under the experimental mode button: pulsing while loading, green when the big
+    model is driving, orange once it has failed and the small model took over. Stays up for the whole drive."""
+    if ui_state.sm.recv_frame['selfdriveState'] < ui_state.started_frame:
+      return
+    sm = ui_state.sm
+    active = ui_state.usbgpu_active
+    model_seen = sm.recv_frame['modelV2'] > ui_state.started_frame
+    big_failed = (active is False or not ui_state.big_model_present or
+                  (active is True and model_seen and not sm.alive['modelV2']) or
+                  (active is None and model_seen))
+    loading = ui_state.usbgpu_loading or (active is None and not big_failed)
+    if loading:
+      icon, opacity = self._txt_egpu, 0.35 + 0.65 * (0.5 - 0.5 * math.cos(rl.get_time() * 6.0))
+    elif big_failed:
+      icon, opacity = self._txt_egpu_orange, 1.0
+    else:
+      icon, opacity = self._txt_egpu_green, 1.0
+    pos = rl.Vector2(x + (UI_CONFIG.button_size - icon.width) / 2, y)
+    rl.draw_texture_ex(icon, pos, 0.0, 1.0, rl.Color(255, 255, 255, int(255 * opacity)))
 
   def user_interacting(self) -> bool:
     return self._exp_button.is_pressed

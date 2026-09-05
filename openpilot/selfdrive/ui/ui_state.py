@@ -79,8 +79,8 @@ class UIState:
     self.experimental_mode: bool = self.params.get_bool("ExperimentalMode")
     self.experimental_mode_confirmed: bool = self.params.get_bool("ExperimentalModeConfirmed")
     self.usbgpu: bool = False
-    self.big_model_present: bool = False  # chestnut attached, or a remote model host has the USB gadget configured
-    self.remote_model_present: bool = False
+    self.big_model_present: bool = False  # live: chestnut attached, or a remote model host has the USB gadget configured
+    self.remote_model_present: bool = False  # latched for the drive, like usbgpu
     self.usbgpu_compiled: bool = usbgpu_compiled()
     self.usbgpu_active: bool | None = self.params.get("UsbGpuActive")
     self.usbgpu_loading: bool = self.params.get_bool("UsbGpuLoading")
@@ -212,8 +212,9 @@ class UIState:
     self.experimental_mode = self.params.get_bool("ExperimentalMode")
     self.experimental_mode_confirmed = self.params.get_bool("ExperimentalModeConfirmed")
     # keep usbgpu UI active until offroad transition when gpu disappears
-    self.remote_model_present = usb_gadget_configured()
-    self.big_model_present = self.sm["deviceState"].chestnutPresent or self.remote_model_present
+    gadget = usb_gadget_configured()
+    self.big_model_present = self.sm["deviceState"].chestnutPresent or gadget
+    self.remote_model_present = gadget or (self.remote_model_present and self.started)
     self.usbgpu = self.big_model_present or (self.usbgpu and self.started)
     if not self.usbgpu_compiled:
       self.usbgpu_compiled = usbgpu_compiled()
