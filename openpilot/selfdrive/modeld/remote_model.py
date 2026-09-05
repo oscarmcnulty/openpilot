@@ -118,10 +118,15 @@ class UsbLink(Link):
     self.handle, self.ep_in, self.ep_out = handle, ep_in, ep_out
     self.timeout_ms = int(timeout * 1000)
 
+  # every libusb failure becomes a ConnectionError so the serve loop drops the link and the device gets reopened.
+  # a write times out when the device stopped reading (modeld died mid-request), NoDevice/IO when it unplugged or rebooted.
   def write(self, data: bytes) -> None:
     view = memoryview(data)
-    while view:
-      view = view[self.handle.bulkWrite(self.ep_out, view, timeout=self.timeout_ms):]
+    try:
+      while view:
+        view = view[self.handle.bulkWrite(self.ep_out, view, timeout=self.timeout_ms):]
+    except self.usb1.USBError as e:
+      raise ConnectionError(f"usb write failed: {e}") from e
 
   def read(self, n: int, header: bool = False) -> bytes:
     try:
@@ -130,6 +135,8 @@ class UsbLink(Link):
       if header:
         raise LinkTimeout() from None
       raise ConnectionError("timeout mid-message") from None
+    except self.usb1.USBError as e:
+      raise ConnectionError(f"usb read failed: {e}") from e
     if len(data) != n:
       raise ConnectionError(f"short transfer {len(data)} of {n}")
     return bytes(data)
@@ -261,7 +268,7 @@ class RemotePolicyServer:
         kind, payload = link.recv()
       except LinkTimeout:
         continue
-      except (ConnectionError, OSError) as e:
+      except Exception as e:
         print(f"link closed: {e}", flush=True)
         return
       try:
@@ -273,7 +280,7 @@ class RemotePolicyServer:
         reply = (MSG_ERR, repr(e).encode())
       try:
         link.send(*reply)
-      except (ConnectionError, OSError) as e:
+      except Exception as e:
         print(f"link closed: {e}", flush=True)
         return
 

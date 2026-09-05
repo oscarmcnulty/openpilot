@@ -22,6 +22,7 @@ os.environ.setdefault('BEAM', '2')  # kernel search, 56ms -> 35ms per frame on a
 
 import argparse
 import time
+import traceback
 import numpy as np
 import usb1
 
@@ -122,10 +123,14 @@ def open_device(ctx: usb1.USBContext):
   for dev in ctx.getDeviceIterator(skip_on_error=True):
     if dev.getVendorID() == USB_VID and dev.getProductID() == USB_PID:
       handle = dev.open()
-      handle.setAutoDetachKernelDriver(True)
-      handle.claimInterface(0)
-      for ep in (EP_IN, EP_OUT):
-        handle.clearHalt(ep)
+      try:
+        handle.setAutoDetachKernelDriver(True)
+        handle.claimInterface(0)
+        for ep in (EP_IN, EP_OUT):
+          handle.clearHalt(ep)
+      except usb1.USBError:
+        handle.close()
+        raise
       return handle
   return None
 
@@ -165,6 +170,10 @@ def main():
       link = UsbLink(handle, EP_IN, EP_OUT)
       try:
         server.serve(link)
+      except Exception:
+        # a policy or runtime failure must not take the server down, the device falls back to its own model
+        # for this drive and reconnects on the next start
+        traceback.print_exc()
       finally:
         link.close()
       print("device disconnected", flush=True)

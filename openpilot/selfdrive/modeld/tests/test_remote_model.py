@@ -4,8 +4,8 @@ import time
 import unittest
 import numpy as np
 
-from openpilot.selfdrive.modeld.remote_model import (RemotePolicyClient, RemotePolicyServer, RemoteModelError, FdLink,
-                                                     CHUNK, chunk_sizes, MSG_HELLO, MSG_OK)
+from openpilot.selfdrive.modeld.remote_model import (RemotePolicyClient, RemotePolicyServer, RemoteModelError, FdLink, UsbLink,
+                                                     LinkTimeout, CHUNK, chunk_sizes, MSG_HELLO, MSG_OK, MSG_RESET, HEADER, MAGIC)
 
 FRAME_SKIP = 4
 INPUT_SHAPES = {'img': (1, 12, 4, 8), 'big_img': (1, 12, 4, 8), 'features_buffer': (1, 24, 3),
@@ -61,6 +61,73 @@ class TestFraming(unittest.TestCase):
       b.recv()
     a.close()
     b.close()
+
+
+class FakeUsbHandle:
+  """libusb handle stand-in: bulkRead serves queued replies or raises, bulkWrite raises when told to."""
+  def __init__(self, usb1):
+    self.usb1 = usb1
+    self.reads: list = []
+    self.write_error = None
+    self.written = b''
+
+  def bulkRead(self, ep, n, timeout=0):
+    if not self.reads:
+      raise self.usb1.USBErrorTimeout(-7)
+    item = self.reads.pop(0)
+    if isinstance(item, Exception):
+      raise item
+    return item[:n]
+
+  def bulkWrite(self, ep, data, timeout=0):
+    if self.write_error is not None:
+      raise self.write_error
+    self.written += bytes(data)
+    return len(data)
+
+  def releaseInterface(self, i):
+    pass
+
+  def close(self):
+    pass
+
+
+class TestUsbLinkErrors(unittest.TestCase):
+  """Every libusb failure must surface as the link's own error types so the server drops the link instead of dying."""
+  def setUp(self):
+    import usb1
+    self.usb1 = usb1
+    self.handle = FakeUsbHandle(usb1)
+    self.link = UsbLink(self.handle, 0x81, 0x01, timeout=0.01)
+
+  def test_header_timeout_is_idle(self):
+    with self.assertRaises(LinkTimeout):
+      self.link.recv()
+
+  def test_write_timeout_closes_link(self):
+    self.handle.write_error = self.usb1.USBErrorTimeout(-7)
+    with self.assertRaises(ConnectionError):
+      self.link.send(MSG_OK, b'x')
+
+  def test_device_gone_closes_link(self):
+    self.handle.write_error = self.usb1.USBErrorNoDevice(-4)
+    with self.assertRaises(ConnectionError):
+      self.link.send(MSG_OK)
+    self.handle.reads = [self.usb1.USBErrorIO(-1)]
+    with self.assertRaises(ConnectionError):
+      self.link.recv()
+
+  def test_payload_timeout_is_not_idle(self):
+    self.handle.reads = [HEADER.pack(MAGIC, MSG_OK, 5)]
+    with self.assertRaises(ConnectionError):
+      self.link.recv()
+
+  def test_serve_survives_dead_device(self):
+    # device sends RESET, then vanishes before the reply can be written: serve must return, not raise
+    self.handle.reads = [HEADER.pack(MAGIC, MSG_RESET, 0)]
+    self.handle.write_error = self.usb1.USBErrorTimeout(-7)
+    md = {'input_shapes': INPUT_SHAPES, 'output_slices': OUTPUT_SLICES, 'out_len': 5, 'model': 'stub'}
+    RemotePolicyServer(StubPolicy(), md, FRAME_SKIP).serve(self.link)
 
 
 class TestRemoteModel(unittest.TestCase):
