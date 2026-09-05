@@ -54,10 +54,18 @@ class TinygradPolicy:
     # one persistent input buffer, written in place each frame. METAL memory is unified, so this is a memcpy
     # with no allocation or copy kernel; devices without a host-visible buffer fall back to a fresh tensor.
     self.warped_t = Tensor.zeros(*self.warped_shape, dtype=dtypes.uint8, device=self.dev).contiguous().realize()
+    self.warped_mv: memoryview | None = None
     try:
-      self.warped_mv: memoryview | None = self.warped_t.uop.buffer.as_memoryview()
-    except Exception:
-      self.warped_mv = None
+      # without force_zero_copy this returns a copy and writes go nowhere, so prove the view is real by reading back
+      mv = self.warped_t.uop.buffer.as_memoryview(force_zero_copy=True)
+      probe = np.random.default_rng(1).integers(0, 256, mv.nbytes, dtype=np.uint8)
+      mv[:] = memoryview(probe).cast('B')
+      if np.array_equal(self.warped_t.numpy().reshape(-1), probe):
+        self.warped_mv = mv
+    except Exception as e:
+      print(f"no zero-copy input buffer on {self.dev} ({e!r}), copying per frame", flush=True)
+    if self.warped_mv is None:
+      print(f"input buffer readback mismatch on {self.dev}, copying per frame", flush=True)
     self.timings = {'copyin': 0.0, 'enqueue': 0.0, 'gpu': 0.0, 'copyout': 0.0}
     self.reset()
 
@@ -86,17 +94,21 @@ class TinygradPolicy:
   def warmup(self, n: int = WARMUP_RUNS) -> int:
     """Captures the JIT and reports timings. Returns the output length."""
     rng = np.random.default_rng(0)
-    out = None
+    outs = []
     for i in range(n):
       warped = rng.integers(0, 256, self.warped_shape, dtype=np.uint8)
       packed = rng.standard_normal(self.packed_len).astype(np.float32)
       st = time.perf_counter()
-      out = self.run(warped, packed)
+      outs.append(self.run(warped, packed))
       breakdown = ' '.join(f"{k} {v:.2f}" for k, v in self.timings.items())
       print(f"  warmup [{i+1}/{n}] {(time.perf_counter() - st) * 1e3:7.2f} ms  ({breakdown})", flush=True)
+    # every warmup input was different, so identical outputs mean the model never saw them
+    if any(np.array_equal(outs[-1], o) for o in outs[:-1]):
+      raise RuntimeError("model output does not depend on the input, refusing to serve")
+    if not all(np.all(np.isfinite(o)) for o in outs):
+      raise RuntimeError("model output is not finite, refusing to serve")
     self.reset()
-    assert out is not None
-    return out.size
+    return outs[-1].size
 
 
 def load_policy(onnx_path: str, frame_skip: int) -> tuple[TinygradPolicy, dict]:
