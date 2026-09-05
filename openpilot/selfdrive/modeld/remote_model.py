@@ -9,7 +9,7 @@ Messages: 4 byte magic, 1 byte kind, 4 byte little-endian payload length, then t
 transfers of at most CHUNK bytes. Both sides always know the exact size of the next transfer, which
 bulk USB needs.
   HELLO  device -> host  JSON {version, frame_skip}; also resets the temporal queues
-  OK     host -> device  JSON model metadata (in reply to HELLO) or float32 output (RUN)
+  OK     host -> device  JSON {input_shapes, output_slices} (in reply to HELLO) or float32 output (RUN)
   RUN    device -> host  warped uint8 bytes followed by packed float32 bytes
   ERR    host -> device  UTF-8 error message
 """
@@ -57,9 +57,6 @@ class Link:
 
   def read(self, n: int, header: bool = False) -> bytes:
     raise NotImplementedError
-
-  def close(self) -> None:
-    pass
 
   def send(self, kind: int, payload: bytes = b'') -> None:
     self.write(HEADER.pack(MAGIC, kind, len(payload)))
@@ -177,18 +174,13 @@ class RemotePolicyClient:
     """Resets the host's temporal queues. Returns the model metadata: input_shapes, output_slices."""
     hello = json.dumps({'version': PROTOCOL_VERSION, 'frame_skip': frame_skip}).encode()
     md = json.loads(self._request(MSG_HELLO, hello, self.setup_timeout))
-    cloudlog.warning(f"remote model connected: {md.get('model')}")
+    cloudlog.warning("remote model connected")
     return {'input_shapes': {k: tuple(v) for k, v in md['input_shapes'].items()}, 'output_slices': slices_from_json(md['output_slices'])}
 
   def run(self, warped: np.ndarray, packed: np.ndarray) -> np.ndarray:
     payload = np.ascontiguousarray(warped).tobytes() + np.ascontiguousarray(packed, dtype=np.float32).tobytes()
     # copy: frombuffer is read-only and the parser works in place
     return np.frombuffer(self._request(MSG_RUN, payload, self.run_timeout), dtype=np.float32).copy()
-
-  def close(self) -> None:
-    self.dead = True
-    self._requests.put(None)
-    self.link.close()
 
 
 class RemotePolicyServer:
@@ -198,18 +190,13 @@ class RemotePolicyServer:
     warped_shape, packed_len: expected input sizes
     reset() -> None: clear the temporal queues
     run(warped: np.ndarray[uint8], packed: np.ndarray[float32]) -> np.ndarray[float32]
-  metadata: dict with input_shapes, output_slices (slices) and an optional model name
+  metadata: dict with input_shapes and output_slices (slices)
   """
   def __init__(self, policy, metadata: dict, frame_skip: int):
     self.policy = policy
     self.frame_skip = frame_skip
-    self.hello_reply = json.dumps({
-      'version': PROTOCOL_VERSION,
-      'frame_skip': frame_skip,
-      'model': metadata.get('model', ''),
-      'input_shapes': {k: list(v) for k, v in metadata['input_shapes'].items()},
-      'output_slices': slices_to_json(metadata['output_slices']),
-    }).encode()
+    self.hello_reply = json.dumps({'input_shapes': {k: list(v) for k, v in metadata['input_shapes'].items()},
+                                   'output_slices': slices_to_json(metadata['output_slices'])}).encode()
     self.warped_nbytes = int(np.prod(policy.warped_shape))
     self.packed_nbytes = int(policy.packed_len) * 4
 

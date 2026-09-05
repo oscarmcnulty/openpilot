@@ -14,7 +14,6 @@ Stdlib only, no openpilot imports: it re-execs itself under sudo and PYTHONPATH 
 """
 import os
 import pwd
-import signal
 import struct
 import subprocess
 import sys
@@ -36,8 +35,6 @@ OWNER = "comma"
 FUNCTIONFS_STRINGS_MAGIC = 2
 FUNCTIONFS_DESCRIPTORS_MAGIC_V2 = 3
 FUNCTIONFS_HAS_FS_DESC, FUNCTIONFS_HAS_HS_DESC, FUNCTIONFS_HAS_SS_DESC = 1, 2, 4
-EVENT_STRUCT = struct.Struct("<8sB3x")
-EVENT_NAMES = ["BIND", "UNBIND", "ENABLE", "DISABLE", "SETUP", "SUSPEND", "RESUME"]
 
 
 def _iface() -> bytes:
@@ -105,15 +102,6 @@ def setup_configfs(uid: int, gid: int) -> None:
     subprocess.check_call(["mount", "-t", "functionfs", "-o", f"uid={uid},gid={gid}", "remote_model", str(FFS_MOUNT)])
 
 
-def serve_ep0(ep0: int) -> None:
-  """Logs bus events. No vendor control requests are used, so nothing needs answering."""
-  while True:
-    data = os.read(ep0, EVENT_STRUCT.size * 4)
-    for off in range(0, len(data), EVENT_STRUCT.size):
-      _, ev_type = EVENT_STRUCT.unpack_from(data, off)
-      log(f"event {EVENT_NAMES[ev_type] if ev_type < len(EVENT_NAMES) else ev_type}")
-
-
 def main() -> None:
   if os.geteuid() != 0:
     os.execvp("sudo", ["sudo", "-n", sys.executable, os.path.abspath(__file__)])
@@ -131,17 +119,10 @@ def main() -> None:
   os.write(ep0, strings())
   (GADGET / "UDC").write_text(udcs[0])
   log(f"gadget up on {udcs[0]} as {USB_VID:04x}:{USB_PID:04x}, endpoints {EP_IN_FILE} {EP_OUT_FILE}")
-
-  signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
-  try:
-    serve_ep0(ep0)
-  finally:
-    log("shutting down")
-    try:
-      (GADGET / "UDC").write_text("")
-    except OSError as e:
-      log(f"unbind failed: {e}")
-    os.close(ep0)
+  # ep0 must stay open and be drained of bus events to keep the function alive. on exit the kernel unbinds the
+  # gadget itself when ep0 closes.
+  while True:
+    os.read(ep0, 64)
 
 
 if __name__ == "__main__":

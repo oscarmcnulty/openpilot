@@ -12,7 +12,7 @@ FRAME_SKIP = 4
 INPUT_SHAPES = {'img': (1, 12, 4, 8), 'big_img': (1, 12, 4, 8), 'features_buffer': (1, 24, 3),
                 'desire_pulse': (1, 25, 2), 'traffic_convention': (1, 2), 'action_t': (1, 2)}
 OUTPUT_SLICES = {'a': slice(0, 2), 'hidden_state': slice(2, 5), 'pad': slice(-2, None)}
-METADATA = {'input_shapes': INPUT_SHAPES, 'output_slices': OUTPUT_SLICES, 'model': 'stub'}
+METADATA = {'input_shapes': INPUT_SHAPES, 'output_slices': OUTPUT_SLICES}
 
 
 class StubPolicy:
@@ -47,14 +47,6 @@ class TestFraming(unittest.TestCase):
     t.start()
     self.assertEqual(b.recv(), (MSG_OK, payload))
     t.join()
-    a.close()
-    b.close()
-
-  def test_bad_magic(self):
-    a, b = pipe_links()
-    a.write(b'XXXX' + bytes(5))
-    with self.assertRaises(ConnectionError):
-      b.recv()
     a.close()
     b.close()
 
@@ -123,18 +115,14 @@ class TestRemoteModel(unittest.TestCase):
     self.client = RemotePolicyClient(link=self.device_link, run_timeout=2.0, setup_timeout=2.0)
 
   def tearDown(self):
-    self.client.close()
+    self.device_link.close()
     self.host_link.close()
     self.thread.join(2.0)
     self.assertFalse(self.thread.is_alive())
 
-  def test_hello_metadata(self):
-    md = self.client.connect(FRAME_SKIP)
-    self.assertEqual(md['input_shapes'], INPUT_SHAPES)
-    self.assertEqual(md['output_slices'], OUTPUT_SLICES)
-
   def test_run_and_reconnect_resets(self):
-    self.client.connect(FRAME_SKIP)
+    md = self.client.connect(FRAME_SKIP)
+    self.assertEqual(md, METADATA)
     warped = np.full(StubPolicy.warped_shape, 3, dtype=np.uint8)
     warped[1, 0, 0, 0] = 7
     packed = np.arange(StubPolicy.packed_len, dtype=np.float32)
@@ -145,11 +133,6 @@ class TestRemoteModel(unittest.TestCase):
     self.assertEqual(self.client.run(warped, packed)[2], 2)
     self.client.connect(FRAME_SKIP)
     self.assertEqual(self.client.run(warped, packed)[2], 1)
-
-  def test_bad_inputs_rejected_by_host(self):
-    self.client.connect(FRAME_SKIP)
-    with self.assertRaises(RemoteModelError):
-      self.client.run(np.zeros((2, 6, 4, 4), dtype=np.uint8), np.zeros(StubPolicy.packed_len, dtype=np.float32))
 
   def test_frame_skip_mismatch(self):
     with self.assertRaises(RemoteModelError):

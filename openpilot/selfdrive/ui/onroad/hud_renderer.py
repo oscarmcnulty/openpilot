@@ -132,11 +132,15 @@ class HudRenderer(Widget):
   def _draw_model_source(self, x: float, y: float) -> None:
     """Big model status under the experimental mode button: pulsing while loading, green when the big
     model is driving, orange once it has failed and the small model took over. Stays up for the whole drive."""
-    if ui_state.sm.recv_frame['selfdriveState'] < ui_state.started_frame:
+    sm = ui_state.sm
+    if sm.recv_frame['selfdriveState'] < ui_state.started_frame:
       return
-    if ui_state.big_model_loading:
+    active, model_seen = ui_state.usbgpu_active, sm.recv_frame['modelV2'] > ui_state.started_frame
+    big_failed = (active is False or not sm['deviceState'].chestnutPresent or
+                  (active is True and model_seen and not sm.alive['modelV2']) or (active is None and model_seen))
+    if ui_state.usbgpu_loading or (active is None and not big_failed):
       icon, opacity = self._txt_egpu, 0.35 + 0.65 * (0.5 - 0.5 * math.cos(rl.get_time() * 6.0))
-    elif ui_state.big_model_failed:
+    elif big_failed:
       icon, opacity = self._txt_egpu_orange, 1.0
     else:
       icon, opacity = self._txt_egpu_green, 1.0

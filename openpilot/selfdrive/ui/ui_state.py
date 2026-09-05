@@ -78,8 +78,6 @@ class UIState:
     self.experimental_mode: bool = self.params.get_bool("ExperimentalMode")
     self.experimental_mode_confirmed: bool = self.params.get_bool("ExperimentalModeConfirmed")
     self.usbgpu: bool = False
-    self.big_model_failed: bool = False
-    self.big_model_loading: bool = False
     self.usbgpu_compiled: bool = usbgpu_compiled()
     self.usbgpu_active: bool | None = self.params.get("UsbGpuActive")
     self.usbgpu_loading: bool = self.params.get_bool("UsbGpuLoading")
@@ -128,7 +126,6 @@ class UIState:
     self.sm.update(0)
     self._update_state()
     self._update_status()
-    self._update_big_model()
     device.update()
 
   def _params_refresh_worker(self):
@@ -211,22 +208,12 @@ class UIState:
     self.always_on_dm = self.params.get_bool("AlwaysOnDM")
     self.experimental_mode = self.params.get_bool("ExperimentalMode")
     self.experimental_mode_confirmed = self.params.get_bool("ExperimentalModeConfirmed")
+    # keep usbgpu UI active until offroad transition when gpu disappears
+    self.usbgpu = self.sm["deviceState"].chestnutPresent or (self.usbgpu and self.started)
     if not self.usbgpu_compiled:
       self.usbgpu_compiled = usbgpu_compiled()
     self.usbgpu_active = self.params.get("UsbGpuActive")
     self.usbgpu_loading = self.params.get_bool("UsbGpuLoading")
-
-
-  def _update_big_model(self) -> None:
-    """Big model status for the comma three HUD. chestnutPresent also covers a remote model host on USB."""
-    present = self.sm["deviceState"].chestnutPresent
-    # keep the UI active until the offroad transition when the device disappears mid-drive
-    self.usbgpu = present or (self.usbgpu and self.started)
-    model_seen = self.sm.recv_frame['modelV2'] > self.started_frame
-    self.big_model_failed = (self.usbgpu_active is False or not present or
-                             (self.usbgpu_active is True and model_seen and not self.sm.alive['modelV2']) or
-                             (self.usbgpu_active is None and model_seen))
-    self.big_model_loading = self.usbgpu_loading or (self.usbgpu_active is None and not self.big_model_failed)
 
 
 class Device:

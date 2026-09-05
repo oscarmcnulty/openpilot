@@ -10,12 +10,17 @@ PRIMARY_USB_CONTROLLER = "a600000.ssusb"
 UDC_PATH = Path("/sys/class/udc")
 
 
-def usb_gadget_configured() -> bool:
-  """True when this device is in USB gadget mode and a host has enumerated and configured it."""
+def usb_gadget_state() -> str:
+  """USB gadget state: 'not attached' with no host on the cable, 'addressed' once a host has enumerated us,
+  'configured' once it has opened the device (the remote model host does that only when it is ready)."""
   try:
-    return any((d / "state").read_text().strip() == "configured" for d in UDC_PATH.iterdir())
-  except OSError:
-    return False
+    return next((d / "state").read_text().strip() for d in UDC_PATH.iterdir())
+  except (OSError, StopIteration):
+    return "not attached"
+
+
+def usb_gadget_configured() -> bool:
+  return usb_gadget_state() == "configured"
 
 
 def get_usb_topology() -> set[str]:
