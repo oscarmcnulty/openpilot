@@ -21,6 +21,9 @@ os.environ.setdefault('FLOAT16', '1')
 os.environ.setdefault('BEAM', '2')  # kernel search, 56ms -> 35ms per frame on an Apple GPU. slow first compile, cached after
 
 import argparse
+import shutil
+import subprocess
+import sys
 import time
 import traceback
 import numpy as np
@@ -135,9 +138,26 @@ def open_device(ctx: usb1.USBContext):
   return None
 
 
+class KeepAwake:
+  """Holds the Mac out of idle sleep only while a device is connected (caffeinate cannot stop a lid-close sleep)."""
+  def __init__(self):
+    self.proc = None
+    self.bin = shutil.which('caffeinate') if sys.platform == 'darwin' else None
+
+  def __enter__(self):
+    if self.bin:
+      self.proc = subprocess.Popen([self.bin, '-dims'])
+    return self
+
+  def __exit__(self, *exc):
+    if self.proc is not None:
+      self.proc.terminate()
+      self.proc = None
+
+
 def main():
   p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-  p.add_argument('--onnx', default='openpilot/selfdrive/modeld/models/big_driving_supercombo.onnx')
+  p.add_argument('--onnx', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'models', 'big_driving_supercombo.onnx'))
   args = p.parse_args()
 
   frame_skip = ModelConstants.MODEL_RUN_FREQ // ModelConstants.MODEL_CONTEXT_FREQ
@@ -169,7 +189,8 @@ def main():
       print("device connected", flush=True)
       link = UsbLink(handle, EP_IN, EP_OUT)
       try:
-        server.serve(link)
+        with KeepAwake():
+          server.serve(link)
       except Exception:
         # a policy or runtime failure must not take the server down, the device falls back to its own model
         # for this drive and reconnects on the next start
