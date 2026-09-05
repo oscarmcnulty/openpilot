@@ -77,6 +77,17 @@ def write(path: Path, value: str) -> None:
   path.write_text(value)
 
 
+def device_serial() -> str:
+  """Stable across boots: macOS remembers accessory approvals by vendor, product and serial."""
+  for tok in Path("/proc/cmdline").read_text().split():
+    if tok.startswith("androidboot.serialno="):
+      return tok.split("=", 1)[1]
+  for p in (Path("/etc/machine-id"), Path("/proc/sys/kernel/random/boot_id")):
+    if p.exists():
+      return p.read_text().strip()
+  return "unknown"
+
+
 def log(msg: str) -> None:
   print(f"remote_model_gadget: {msg}", flush=True)
 
@@ -96,7 +107,7 @@ def setup_configfs(uid: int, gid: int) -> None:
   (GADGET / "strings" / "0x409").mkdir(parents=True, exist_ok=True)
   write(GADGET / "strings" / "0x409" / "manufacturer", "comma")
   write(GADGET / "strings" / "0x409" / "product", "openpilot remote model")
-  write(GADGET / "strings" / "0x409" / "serialnumber", Path("/proc/sys/kernel/random/boot_id").read_text().strip())
+  write(GADGET / "strings" / "0x409" / "serialnumber", device_serial())
   config = GADGET / "configs" / "c.1"
   (config / "strings" / "0x409").mkdir(parents=True, exist_ok=True)
   write(config / "strings" / "0x409" / "configuration", "remote model")
