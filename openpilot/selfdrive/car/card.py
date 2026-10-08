@@ -17,7 +17,6 @@ from opendbc.car.can_definitions import CanData, CanRecvCallable, CanSendCallabl
 from opendbc.car.carlog import carlog
 from opendbc.car.fw_versions import ObdCallback
 from opendbc.car.car_helpers import get_car, interfaces
-from opendbc.car.vin import get_vin, is_valid_vin
 from opendbc.car.interfaces import CarInterfaceBase, RadarInterfaceBase
 from openpilot.selfdrive.pandad import can_capnp_to_list, can_list_to_can_capnp
 from openpilot.selfdrive.car.cruise import VCruiseHelper
@@ -39,35 +38,6 @@ def obd_callback(params: Params) -> ObdCallback:
       params.get_bool("ObdMultiplexingChanged", block=True)
       cloudlog.warning("OBD multiplexing set successfully")
   return set_obd_multiplexing
-
-
-def early_lateral_heartbeat(CP: car.CarParams) -> bool:
-  # VW MLB without a stock lane assist camera: openpilot is the only HCA_01 sender, and the EPS latches an
-  # HCA fault for the rest of the drive if HCA_01 isn't on the bus within a few seconds of power-up.
-  # Start a neutral (status 3, zero torque) stream as soon as the car is known instead of waiting
-  # for selfdrived to initialize, which can take up to 6s more, longer while a big model loads.
-  return any(cfg.safetyModel == structs.CarParams.SafetyModel.volkswagenMlb for cfg in CP.safetyConfigs)
-
-
-def vin_verified_persistent_params(params: Params, can_recv: CanRecvCallable, can_send: CanSendCallable,
-                                   set_obd_multiplexing: ObdCallback) -> structs.CarParamsT | None:
-  # CarParamsCache is cleared on every device boot, so a cold boot redoes the full FW query.
-  # If the VIN still matches the last car, reuse its FW versions and skip the query.
-  persistent_raw = params.get("CarParamsPersistent")
-  if persistent_raw is None or os.environ.get("DISABLE_FW_CACHE"):
-    return None
-  with car.CarParams.from_bytes(persistent_raw) as _persistent:
-    persistent = _persistent
-  if not early_lateral_heartbeat(persistent) or len(persistent.carFw) == 0 or not is_valid_vin(persistent.carVin):
-    return None
-
-  set_obd_multiplexing(True)
-  _, _, vin = get_vin(can_recv, can_send, (0, 1))
-  if vin != persistent.carVin:
-    cloudlog.warning(f"VIN {vin} does not match persistent CarParams VIN {persistent.carVin}, doing full FW query")
-    return None
-  cloudlog.warning("VIN matches persistent CarParams, skipping FW query")
-  return persistent
 
 
 def can_comm_callbacks(logcan: messaging.SubSocket, sendcan: messaging.PubSocket) -> tuple[CanRecvCallable, CanSendCallable]:
@@ -102,8 +72,7 @@ class Car:
 
     self.CC_prev = car.CarControl.new_message()
     self.CS_prev = car.CarState.new_message()
-    self.CC_neutral = car.CarControl.new_message().as_reader()
-    self.controls_ready = False
+    self.initialized_prev = False
 
     self.last_actuators_output = structs.CarControl.Actuators()
 
@@ -128,8 +97,6 @@ class Car:
       if cached_params_raw is not None:
         with car.CarParams.from_bytes(cached_params_raw) as _cached_params:
           cached_params = _cached_params
-      else:
-        cached_params = vin_verified_persistent_params(self.params, *self.can_callbacks, obd_callback(self.params))
 
       self.CI = get_car(*self.can_callbacks, obd_callback(self.params), alpha_long_allowed, is_release, cached_params)
       self.RI = interfaces[self.CI.CP.carFingerprint].RadarInterface(self.CI.CP)
@@ -181,8 +148,6 @@ class Car:
     self.params.put("CarParams", cp_bytes, block=True)
     self.params.put("CarParamsCache", cp_bytes)
     self.params.put("CarParamsPersistent", cp_bytes)
-
-    self.early_heartbeat = not self.CP.passive and early_lateral_heartbeat(self.CP)
 
     self.v_cruise_helper = VCruiseHelper(self.CP)
 
@@ -256,29 +221,23 @@ class Car:
       tracks_msg.radarTracks = RD
       self.pm.send('radarTracks', tracks_msg)
 
-  def controls_update(self, CS: car.CarState, CC: car.CarControl, initialized: bool):
+  def controls_update(self, CS: car.CarState, CC: car.CarControl):
     """control update loop, driven by carControl"""
 
-    if not self.controls_ready:
+    if not self.initialized_prev:
       # Initialize CarInterface, once controls are ready
       # TODO: this can make us miss at least a few cycles when doing an ECU knockout
       self.CI.init(self.CP, *self.can_callbacks)
       # signal pandad to switch to car safety mode
       self.params.put_bool("ControlsReady", True)
-      self.controls_ready = True
 
-    if initialized and self.sm.all_alive(['carControl']):
+    if self.sm.all_alive(['carControl']):
+      # send car controls over can
+      now_nanos = self.can_log_mono_time if REPLAY else int(time.monotonic() * 1e9)
+      self.last_actuators_output, can_sends = self.CI.apply(CC, now_nanos)
+      self.pm.send('sendcan', can_list_to_can_capnp(can_sends, msgtype='sendcan', valid=CS.canValid))
+
       self.CC_prev = CC
-    elif self.early_heartbeat and not initialized:
-      # disengaged controls until selfdrived takes over
-      CC = self.CC_neutral
-    else:
-      return
-
-    # send car controls over can
-    now_nanos = self.can_log_mono_time if REPLAY else int(time.monotonic() * 1e9)
-    self.last_actuators_output, can_sends = self.CI.apply(CC, now_nanos)
-    self.pm.send('sendcan', can_list_to_can_capnp(can_sends, msgtype='sendcan', valid=CS.canValid))
 
   def step(self):
     CS, RD = self.state_update()
@@ -287,9 +246,10 @@ class Car:
 
     initialized = (not any(e.name == EventName.selfdriveInitializing for e in self.sm['onroadEvents']) and
                    self.sm.seen['onroadEvents'])
-    if not self.CP.passive and (initialized or self.early_heartbeat):
-      self.controls_update(CS, self.sm['carControl'], initialized)
+    if not self.CP.passive and initialized:
+      self.controls_update(CS, self.sm['carControl'])
 
+    self.initialized_prev = initialized
     self.CS_prev = CS
 
   def params_thread(self, evt):
