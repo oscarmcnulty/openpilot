@@ -34,13 +34,12 @@ class MeanMax:
     return f"{self.sum / self.n if self.n else 0:6.2f} / {self.max:6.2f}"
 
 
-def read(identifier):
-  windows = []  # one dict per 10s dump: {"spi": ..., "loop": ..., "hca": ..., "t": ...}
+def to_windows(records):
+  """records: (t seconds, swaglog record json) -> one dict per 10s dump: {"spi": ..., "loop": ..., "hca": ..., "t": ...}"""
+  windows = []
   cur = {}
-  for m in LogReader(identifier, default_mode=ReadMode.QLOG):
-    if m.which() != "errorLogMessage":
-      continue
-    msg = json.loads(m.errorLogMessage).get("msg", "")
+  for t, record in records:
+    msg = json.loads(record).get("msg", "")
     if not isinstance(msg, str) or not msg.startswith("pandad_timing_"):
       continue
     kind, payload = msg.split(" ", 1)
@@ -49,10 +48,15 @@ def read(identifier):
       windows.append(cur)
       cur = {}
     cur[kind] = json.loads(payload)
-    cur["t"] = m.logMonoTime / 1e9
+    cur["t"] = t
   if cur:
     windows.append(cur)
   return windows
+
+
+def read(identifier):
+  lr = LogReader(identifier, default_mode=ReadMode.QLOG)
+  return to_windows((m.logMonoTime / 1e9, m.errorLogMessage) for m in lr if m.which() == "errorLogMessage")
 
 
 def main():
@@ -60,14 +64,16 @@ def main():
   parser.add_argument("route")
   parser.add_argument("--windows", action="store_true", help="print every 10s window")
   args = parser.parse_args()
+  summarize(read(args.route), args.windows)
 
-  windows = read(args.route)
+
+def summarize(windows, show_windows=False):
   if not windows:
     print("no pandad_timing lines found (is the instrumented pandad running?)")
     return
   t0 = windows[0]["t"]
 
-  if args.windows:
+  if show_windows:
     print(f"{'t':>7} {'hca':>4} {'gap>25':>6} {'maxgap':>7}  lat bins {LAT_BINS}  worst (lat lock phase frame%10 busy)")
     for w in windows:
       h = w.get("hca", {})

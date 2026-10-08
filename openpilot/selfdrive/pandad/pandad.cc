@@ -60,6 +60,12 @@ Panda *connect(std::string serial) {
 void can_send_thread(Panda *panda, bool fake_send) {
   util::set_thread_name("pandad_can_send");
 
+  // experiment: PANDAD_SEND_PRIO=55 lets the send thread preempt the main thread when hw_lock is released
+  if (const char *prio = getenv("PANDAD_SEND_PRIO")) {
+    int err = util::set_realtime_priority(atoi(prio));
+    LOGW("can_send_thread SCHED_FIFO %s: %d", prio, err);
+  }
+
   AlignedBuffer aligned_buf;
   std::unique_ptr<Context> context(Context::create());
   std::unique_ptr<SubSocket> subscriber(SubSocket::create(context.get(), "sendcan", "127.0.0.1", false, true, services.at("sendcan").queue_size));
