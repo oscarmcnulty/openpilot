@@ -16,6 +16,7 @@
 #include "common/timing.h"
 #include "common/util.h"
 #include "common/hardware/hw.h"
+#include "selfdrive/pandad/timing_stats.h"
 
 #define MAX_IR_PANDA_VAL 50
 #define CUTOFF_IL 400
@@ -71,15 +72,31 @@ void can_send_thread(Panda *panda, bool fake_send) {
     if (!msg) {
       continue;
     }
+    const uint64_t recv_ns = nanos_since_boot();
+    const uint64_t main_start_ns = pandad_timing::iter_start_ns;
+    const uint32_t main_frame = pandad_timing::iter_frame;
+    const bool main_busy = pandad_timing::main_busy;
 
     capnp::FlatArrayMessageReader cmsg(aligned_buf.align(msg.get()));
     cereal::Event::Reader event = cmsg.getRoot<cereal::Event>();
 
     // Don't send if older than 1 second
     if ((nanos_since_boot() - event.getLogMonoTime() < 1e9) && !fake_send) {
+      bool has_hca = false;  // VW HCA_01 on bus 0, for pandad_timing
+      for (const auto &c : event.getSendcan()) {
+        has_hca |= (c.getAddress() == 0x126U) && (c.getSrc() == 0U);
+      }
+      pandad_timing::lock_wait_ns = 0;
+      const uint64_t start_ns = nanos_since_boot();
+
       LOGT("sending sendcan to panda: %s", (panda->hw_serial()).c_str());
       panda->can_send(event.getSendcan());
       LOGT("sendcan sent to panda: %s", (panda->hw_serial()).c_str());
+
+      if (has_hca) {
+        pandad_timing::record_hca(event.getLogMonoTime(), recv_ns, start_ns, nanos_since_boot(), pandad_timing::lock_wait_ns,
+                                  main_start_ns, main_frame, main_busy);
+      }
     } else {
       LOGE("sendcan too old to send: %" PRIu64 ", %" PRIu64, nanos_since_boot(), event.getLogMonoTime());
     }
@@ -374,6 +391,13 @@ void pandad_run(Panda *panda) {
 
   // Main loop: receive CAN first, then process lower priority panda and peripheral state.
   while (!do_exit && check_connected(panda)) {
+    const uint64_t iter_start_ns = nanos_since_boot();
+    const uint32_t iter_frame = rk.frame();
+    const uint32_t iter_xfers = pandad_timing::xfer_count;
+    pandad_timing::iter_start_ns = iter_start_ns;
+    pandad_timing::iter_frame = iter_frame;
+    pandad_timing::main_busy = true;
+
     can_recv(panda, &pm);
 
     // Process peripheral state at 20 Hz
@@ -408,7 +432,13 @@ void pandad_run(Panda *panda) {
       }
     }
 
-    rk.keepTime();
+    pandad_timing::main_busy = false;
+    const uint64_t run_ns = nanos_since_boot() - iter_start_ns;
+    const bool lagged = rk.keepTime();
+    pandad_timing::record_loop(iter_frame, run_ns, pandad_timing::xfer_count - iter_xfers, lagged);
+    if (iter_frame % 1000 == 999) {
+      pandad_timing::dump();
+    }
   }
 
   // Close relay on exit to prevent a fault

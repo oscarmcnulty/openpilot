@@ -13,6 +13,7 @@
 #include "common/swaglog.h"
 #include "panda/board/comms_definitions.h"
 #include "selfdrive/pandad/panda_comms.h"
+#include "selfdrive/pandad/timing_stats.h"
 
 
 #define SPI_SYNC 0x5AU
@@ -258,7 +259,9 @@ int PandaSpiHandle::wait_for_ack(uint8_t ack, uint8_t tx, unsigned int timeout, 
   };
   memset(tx_buf, tx, length);
 
+  ack_polls = 0;
   while (true) {
+    ack_polls++;
     int ret = lltransfer(transfer);
     if (ret < 0) {
       SPILOG(LOGE, "SPI: failed to send ACK request");
@@ -319,13 +322,19 @@ int PandaSpiHandle::lltransfer(spi_ioc_transfer &t) {
 int PandaSpiHandle::spi_transfer(uint8_t endpoint, uint8_t *tx_data, uint16_t tx_len, uint8_t *rx_data, uint16_t max_rx_len, unsigned int timeout) {
   int ret;
   uint16_t rx_data_len;
+  // pandad_timing: lock, pre_ta, hdr, hack, post_ta, data, dack, rx
+  uint64_t ts[pandad_timing::N_PHASES] = {nanos_since_boot()};
+  uint32_t hack_polls = 0, dack_polls = 0;
+  const uint8_t request = ((endpoint == 0U) && (tx_data != NULL)) ? tx_data[0] : 0U;
   LockEx lock(spi_fd, hw_lock);
+  ts[1] = nanos_since_boot();
 
   // needs to be less, since we need to have space for the checksum
   assert(tx_len < SPI_BUF_SIZE);
   assert(max_rx_len < SPI_BUF_SIZE);
 
   wait_for_spi_turnaround(spi_last_bus_activity_ns);
+  ts[2] = nanos_since_boot();
 
   xfer_count++;
   header = {
@@ -345,6 +354,7 @@ int PandaSpiHandle::spi_transfer(uint8_t endpoint, uint8_t *tx_data, uint16_t tx
   add_checksum(tx_buf, sizeof(header));
   transfer.len = sizeof(header) + 1;
   ret = lltransfer(transfer);
+  ts[3] = nanos_since_boot();
   if (ret < 0) {
     SPILOG(LOGE, "SPI: failed to send header");
     goto fail;
@@ -352,10 +362,13 @@ int PandaSpiHandle::spi_transfer(uint8_t endpoint, uint8_t *tx_data, uint16_t tx
 
   // Wait for (N)ACK
   ret = wait_for_ack(SPI_HACK, 0x11, timeout, 1);
+  hack_polls = ack_polls;
+  ts[4] = nanos_since_boot();
   if (ret < 0) {
     goto fail;
   }
   wait_for_spi_turnaround(nanos_since_boot());
+  ts[5] = nanos_since_boot();
 
   // Send data
   if (tx_data != NULL) {
@@ -364,6 +377,7 @@ int PandaSpiHandle::spi_transfer(uint8_t endpoint, uint8_t *tx_data, uint16_t tx
   add_checksum(tx_buf, tx_len);
   transfer.len = tx_len + 1;
   ret = lltransfer(transfer);
+  ts[6] = nanos_since_boot();
   if (ret < 0) {
     SPILOG(LOGE, "SPI: failed to send data");
     goto fail;
@@ -371,6 +385,8 @@ int PandaSpiHandle::spi_transfer(uint8_t endpoint, uint8_t *tx_data, uint16_t tx
 
   // Wait for (N)ACK
   ret = wait_for_ack(SPI_DACK, 0x13, timeout, 3);
+  dack_polls = ack_polls;
+  ts[7] = nanos_since_boot();
   if (ret < 0) {
     goto fail;
   }
@@ -399,6 +415,8 @@ int PandaSpiHandle::spi_transfer(uint8_t endpoint, uint8_t *tx_data, uint16_t tx
   }
 
   spi_last_bus_activity_ns = nanos_since_boot();
+  ts[8] = spi_last_bus_activity_ns;
+  pandad_timing::record_spi(endpoint, request, ts, hack_polls, dack_polls, true);
   return rx_data_len;
 
 fail:
@@ -414,6 +432,10 @@ fail:
   }
 
   spi_last_bus_activity_ns = nanos_since_boot();
+  for (int i = 1; i < pandad_timing::N_PHASES; i++) {
+    if (ts[i] == 0) ts[i] = ts[i - 1];
+  }
+  pandad_timing::record_spi(endpoint, request, ts, hack_polls, dack_polls, false);
   if (ret >= 0) ret = -1;
   return ret;
 }

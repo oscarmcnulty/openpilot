@@ -49,4 +49,5 @@ private:
 
   spi_header header;
   uint32_t xfer_count = 0;
+  uint32_t ack_polls = 0;  // lltransfers in the last wait_for_ack, for pandad_timing
 };
