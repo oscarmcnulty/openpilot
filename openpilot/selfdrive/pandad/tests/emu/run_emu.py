@@ -15,6 +15,17 @@ The HCA_01 arrival times are scored against the EPS heal rule (vag-ecu-re ecus/e
   run_emu.py --parity 0 -d 60     # one run
   run_emu.py --pandad /path/to/modified/pandad
   EMU_IOCTL_SLEEP_US=100 run_emu.py   # fake panda timing knobs, see fake_spi.c
+  PANDAD_SEND_PRIO=55 run_emu.py      # env is passed to pandad too
+
+Columns: gaps>25ms / max / p99 are HCA_01 inter-arrival gaps at the fake panda. flips and in10Hz% say where
+in pandad's 10Hz cycle HCA_01 arrived (taken at arrival, so delayed frames count in the next iteration).
+card>25 is the fake card's own publish gaps, the emulator's floor (card is clocked by pandad's can publish,
+so a pandad iteration that overruns 10ms also delays card).
+
+Setup (once, from the repo root):
+  git submodule update --init && uv sync --frozen --extra tools --extra testing && source .venv/bin/activate
+  scons -j4 openpilot/selfdrive/pandad/pandad msgq_repo/msgq/ipc_pyx.so openpilot/common/libparams_c.so
+Needs root (SCHED_FIFO, creating /dev/spidev0.0) and 4+ cores.
 """
 import argparse
 import json
@@ -260,14 +271,15 @@ def main():
 
   build_fake_spi()
   print(f"pandad: {args.pandad}\nfake panda: " + " ".join(f"{k}={v}" for k, v in os.environ.items() if k.startswith("EMU_")))
-  print(f"{'parity':>6} {'HCA_01':>7} {'gaps>25ms':>10} {'max gap':>8} {'p99 gap':>8} {'flips':>5} {'in10Hz%':>7} {'card>25':>7}  EPS healed after (s), 4 tick phases")
+  print(f"{'parity':>6} {'HCA_01':>7} {'gaps>25ms':>10} {'max gap':>8} {'p99 gap':>8} {'flips':>5} {'in10Hz%':>7} {'card>25':>7}  " +
+        "EPS healed after (s), 4 tick phases")
   for parity in ([args.parity] if args.parity is not None else [0, 1]):
     res, records, work = run(args, parity, args.seed)
     if res.get("n", 0) < 2:
       print(f"{parity:>6}  no HCA_01 received, see {work}")
       continue
     heal = " ".join("never" if h is None else f"{h:.2f}" for h in res["heal_s"])
-    print(f"{parity:>6} {res['n']:7d} {res['gaps_over_25']:5d} ({res['pct_over_25']:4.1f}%) {res['max_gap']:7.1f}  {res['p99_gap']:7.1f} "
+    print(f"{parity:>6} {res['n']:7d} {res['gaps_over_25']:5d} ({res['pct_over_25']:4.1f}%) {res['max_gap']:7.1f}  {res['p99_gap']:7.1f} " +
           f"{res['parity_flips']:5d} {res['in_readout_iter_pct']:7.0f} {res['card_gaps_over_25']:7d}   {heal}")
     if args.timing:
       sys.path.insert(0, PANDAD_DIR)
