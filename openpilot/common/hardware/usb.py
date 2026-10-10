@@ -8,6 +8,7 @@ CHESTNUT_USB_PRODUCT = f"custom {CHESTNUT_FW_VERSION}-CLEAN"
 USB_DEVICES_PATH = Path("/sys/bus/usb/devices")
 TYPEC_CC_ORIENTATION_PATH = Path("/sys/class/power_supply/usb/typec_cc_orientation")
 PRIMARY_USB_CONTROLLER = "a600000.ssusb"
+UDC_PATH = Path("/sys/class/udc")
 
 
 def is_chestnut_usb_id(vendor_id: int, product_id: int, include_bootloader: bool = False) -> bool:
@@ -34,6 +35,19 @@ def read_int(path: Path, base: int = 10) -> int:
     return int(path.read_text(), base)
   except (OSError, ValueError, TypeError):
     return 0
+
+
+def usb_gadget_state() -> str:
+  """USB gadget state: 'not attached' with no host on the cable, 'addressed' once a host has enumerated us,
+  'configured' once it has opened the device (the remote model host does that only when it is ready)."""
+  try:
+    return next((d / "state").read_text().strip() for d in UDC_PATH.iterdir())
+  except (OSError, StopIteration):
+    return "not attached"
+
+
+def usb_gadget_configured() -> bool:
+  return usb_gadget_state() == "configured"
 
 
 def cable_connected() -> bool:
@@ -77,6 +91,7 @@ def get_usb_state() -> list[dict]:
 
 
 def set_usb_state(device_state, devices: list[dict]) -> None:
+  # chestnutPresent also covers a remote model host that has configured our USB gadget, the rest of openpilot treats both the same
   entries = device_state.usbState.init('devices', len(devices))
 
   chestnut_present = False
@@ -94,5 +109,5 @@ def set_usb_state(device_state, devices: list[dict]) -> None:
     if is_chestnut_usb_id(entry.vendorId, entry.productId):
       chestnut_present = True
 
-  device_state.chestnutPresent = chestnut_present
+  device_state.chestnutPresent = chestnut_present or usb_gadget_configured()
   device_state.usbState.connected = cable_connected()

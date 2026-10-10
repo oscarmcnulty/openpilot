@@ -11,7 +11,7 @@ from tinygrad.device import Buffer, Device
 from tinygrad.dtype import DType, dtypes
 from tinygrad.engine.realize import lower_and_compile
 from tinygrad.tensor import Tensor
-from tinygrad.helpers import round_up
+from tinygrad.helpers import Context, round_up
 from tinygrad.uop.ops import UOp
 import math
 import pickle
@@ -28,7 +28,7 @@ from msgq.visionipc import VisionIpcClient, VisionBuf
 from opendbc.car.car_helpers import get_demo_car_params
 from openpilot.common.swaglog import cloudlog
 from openpilot.common.params import Params
-from openpilot.common.hardware.usb import cable_connected
+from openpilot.common.hardware.usb import cable_connected, usb_gadget_state, usb_gadget_configured
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.realtime import config_realtime_process, DT_MDL
 from openpilot.common.transformations.camera import DEVICE_CAMERAS
@@ -39,7 +39,8 @@ from openpilot.selfdrive.controls.lib.drive_helpers import get_accel_from_plan, 
 from openpilot.selfdrive.modeld.parse_model_outputs import Parser
 from openpilot.selfdrive.modeld.fill_model_msg import fill_model_msg, fill_driving_model_data, fill_pose_msg, PublishState
 from openpilot.selfdrive.modeld.constants import ModelConstants, Plan
-from openpilot.selfdrive.modeld.helpers import MODELS_DIR, chestnut_present, chestnut_compiled, modeld_pkl_path, load_oob, wait_for_chestnut
+from openpilot.selfdrive.modeld.helpers import MODELS_DIR, chestnut_present, chestnut_compiled, modeld_pkl_path, model_device, load_oob, wait_for_chestnut
+from openpilot.selfdrive.modeld.remote_model import RemotePolicyClient
 
 SEND_RAW_PRED = os.getenv('SEND_RAW_PRED')
 
@@ -141,16 +142,27 @@ def input_view(buffer: Buffer, shape: tuple[int, ...], dtype: DType, offset: int
 class ModelState:
   prev_desire: np.ndarray  # for tracking the rising edge of the pulse
 
-  def __init__(self, cam_w: int, cam_h: int, chestnut: bool):
-    jits = load_oob(modeld_pkl_path(chestnut), chestnut)
-    self.model_device = jits['input_specs']['new_img'][2]
-    self.input_shapes = {name: (shape, np.dtype(dtype)) for name, (shape, dtype, _) in jits['input_specs'].items()}
-    self.state_pairs = {name: f'next_{name}' for name in self.input_shapes if f'next_{name}' in jits['metadata']['output_shapes']}
+  def __init__(self, cam_w: int, cam_h: int, chestnut: bool, remote: RemotePolicyClient | None = None):
+    # remote: the model and its recurrent state run on a remote_model_server over USB, the warp still runs here
+    self.remote = remote
+    if remote is None:
+      jits = load_oob(modeld_pkl_path(chestnut), chestnut)
+      self.model_device = jits['input_specs']['new_img'][2]
+      self.input_shapes = {name: (shape, np.dtype(dtype)) for name, (shape, dtype, _) in jits['input_specs'].items()}
+      self.state_pairs = {name: f'next_{name}' for name in self.input_shapes if f'next_{name}' in jits['metadata']['output_shapes']}
+      self.output_slices = pickle.loads(base64.b64decode(jits['metadata']['metadata']['output_slices']))
+    else:
+      metadata = remote.connect()
+      with Context(DEV=model_device(chestnut)):
+        self.model_device = Device.DEFAULT  # the device the warp pkl was compiled for, as load_oob resolves it
+      self.input_shapes = metadata['input_shapes']
+      self.state_pairs = {}
+      self.output_slices = metadata['output_slices']
     self.vision_input_names = ('img', 'big_img')
-    self.output_slices = pickle.loads(base64.b64decode(jits['metadata']['metadata']['output_slices']))
 
     self.prev_desire = np.zeros(ModelConstants.DESIRE_LEN, dtype=np.float32)
     self.chestnut = chestnut
+    self.big = chestnut or remote is not None
 
     stride, y_height, uv_height, _ = get_nv12_info(cam_w, cam_h)
     self.frame_copy_size = stride * (y_height + uv_height)
@@ -158,12 +170,13 @@ class ModelState:
     with open(MODELS_DIR / f'{"big_" if chestnut else ""}driving_warp_{cam_w}x{cam_h}_tinygrad.pkl', 'rb') as f:
       self.run_warp = pickle.load(f)['run']
     self.run_warp.captured._linear = lower_and_compile(self.run_warp.captured._linear)
-    self.run_model = jits['run']
-    self.run_model.captured._linear = lower_and_compile(self.run_model.captured._linear)
-    self.outputs = {name: Tensor(np.zeros(shape, dtype=dtype), device=device).realize() for name, (shape, dtype, device) in jits['output_specs'].items()}
-    for name, next_name in self.state_pairs.items():
-      state = self.input_queues[name]
-      self.outputs[next_name] = input_view(state._buffer(), state.shape, state.dtype, 0)
+    if remote is None:
+      self.run_model = jits['run']
+      self.run_model.captured._linear = lower_and_compile(self.run_model.captured._linear)
+      self.outputs = {name: Tensor(np.zeros(shape, dtype=dtype), device=device).realize() for name, (shape, dtype, device) in jits['output_specs'].items()}
+      for name, next_name in self.state_pairs.items():
+        state = self.input_queues[name]
+        self.outputs[next_name] = input_view(state._buffer(), state.shape, state.dtype, 0)
     self.parser = Parser()
 
   def pack_inputs(self) -> None:
@@ -203,11 +216,14 @@ class ModelState:
 
     self.input_device.copy_from(self.input_host)
     self.input_queues['new_img'] = self.run_warp(**self.warp_inputs)
-    self.run_model(output_buffers=self.outputs, **self.input_queues)
-    if after_enqueue is not None:
-      after_enqueue()
-    model_output = self.outputs['outputs'].numpy()[0]
-    if self.chestnut and not np.all(np.isfinite(model_output)):
+    if self.remote is not None:
+      model_output = self.remote.run({'new_img': self.input_queues['new_img'].numpy()} | self.npy)
+    else:
+      self.run_model(output_buffers=self.outputs, **self.input_queues)
+      if after_enqueue is not None:
+        after_enqueue()
+      model_output = self.outputs['outputs'].numpy()[0]
+    if self.big and not np.all(np.isfinite(model_output)):
       raise RuntimeError("model output not finite")
     outputs_dict = self.parser.parse_outputs(self.slice_outputs(model_output, self.output_slices))
 
@@ -223,18 +239,23 @@ class ModelState:
     self.packed_input[:] = 0
     for key in self.state_pairs:
       self.input_queues[key].assign(0).realize()
+    if self.remote is not None:
+      self.remote.connect()  # resets the host's recurrent state too
     self.prev_desire[:] = 0
 
 
 def main(demo=False):
   cloudlog.warning("modeld init")
 
-  CHESTNUT = chestnut_compiled() and (chestnut_present() or cable_connected())
+  REMOTE = usb_gadget_state() in ('addressed', 'configured')  # a remote model host is on the cable
+  CHESTNUT = not REMOTE and chestnut_compiled() and (chestnut_present() or cable_connected())
+  BIG = CHESTNUT or REMOTE
   if CHESTNUT:
     from tinygrad.runtime.ops_amd import AMDDevice
     AMDDevice.wait_timeout_ms = 3000
   params = Params()
-  params.put_bool("ChestnutLoading", CHESTNUT)
+  # the Chestnut* params also cover a remote big model, selfdrived and the ui gate on them
+  params.put_bool("ChestnutLoading", BIG)
   params.remove("ChestnutActive")
 
   gc.disable()
@@ -265,13 +286,20 @@ def main(demo=False):
   st = time.monotonic()
   cloudlog.warning("loading model")
   model = None
-  if CHESTNUT:
+  if BIG:
     big_model = None
     def load_big():
       nonlocal big_model
       try:
-        wait_for_chestnut()
-        m = ModelState(vipc_client_main.width, vipc_client_main.height, True)
+        if REMOTE:
+          # the host opens the device once its model is loaded; ignition usually comes first, so wait inside the load budget
+          deadline = time.monotonic() + BIG_MODEL_TIMEOUT
+          while not usb_gadget_configured() and time.monotonic() < deadline:
+            time.sleep(0.5)
+          m = ModelState(vipc_client_main.width, vipc_client_main.height, False, RemotePolicyClient())
+        else:
+          wait_for_chestnut()
+          m = ModelState(vipc_client_main.width, vipc_client_main.height, True)
         m.warmup()
         big_model = m
       except Exception:
@@ -282,7 +310,7 @@ def main(demo=False):
     model = big_model
     params.put_bool("ChestnutActive", model is not None)
 
-  small_model = ModelState(vipc_client_main.width, vipc_client_main.height, False) if model is None or CHESTNUT else None
+  small_model = ModelState(vipc_client_main.width, vipc_client_main.height, False) if model is None or BIG else None
   if model is None:
     model = small_model
   params.put_bool("ChestnutLoading", False)
@@ -409,7 +437,7 @@ def main(demo=False):
                        run_count % round(ModelConstants.MODEL_RUN_FREQ / SERVICE_LIST['chestnutGpuState'].frequency) == 0)
       model_output = model.run(bufs, transforms, inputs, chestnut_state.send if send_chestnut else None)
     except Exception:
-      if not model.chestnut:
+      if not model.big:
         raise
       # fallback to small model
       cloudlog.exception("big model failed, fall back to small")
@@ -432,7 +460,7 @@ def main(demo=False):
       fill_model_msg(modelv2_send, model_output, action,
                      publish_state, meta_main.frame_id, meta_extra.frame_id, frame_id,
                      frame_drop_ratio, meta_main.timestamp_eof, model_execution_time, extrinsics_calibration_seen)
-      modelv2_send.modelV2.big = model.chestnut
+      modelv2_send.modelV2.big = model.big
 
       desire_state = modelv2_send.modelV2.meta.desireState
       l_lane_change_prob = desire_state[log.Desire.laneChangeLeft]

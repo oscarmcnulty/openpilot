@@ -1,8 +1,9 @@
+import math
 import pyray as rl
 from dataclasses import dataclass
 from openpilot.common.constants import CV
 from openpilot.selfdrive.ui.onroad.exp_button import ExpButton
-from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus
+from openpilot.selfdrive.ui.ui_state import ui_state, UIStatus, ChestnutState
 from openpilot.system.ui.lib.application import gui_app, FontWeight
 from openpilot.system.ui.lib.multilang import tr
 from openpilot.system.ui.lib.text_measure import measure_text_cached
@@ -72,6 +73,10 @@ class HudRenderer(Widget):
 
     self._exp_button: ExpButton = ExpButton(UI_CONFIG.button_size, UI_CONFIG.wheel_icon_size)
 
+    self._txt_chestnut: rl.Texture = gui_app.texture('icons_mici/chestnut.png', 96, 70)
+    self._txt_chestnut_green: rl.Texture = gui_app.texture('icons_mici/chestnut_green.png', 96, 70)
+    self._txt_chestnut_orange: rl.Texture = gui_app.texture('icons_mici/chestnut_orange.png', 120, 70)
+
   def _update_state(self) -> None:
     """Update HUD state based on car state and controls state."""
     sm = ui_state.sm
@@ -120,6 +125,21 @@ class HudRenderer(Widget):
     button_x = rect.x + rect.width - UI_CONFIG.border_size - UI_CONFIG.button_size
     button_y = rect.y + UI_CONFIG.border_size
     self._exp_button.render(rl.Rectangle(button_x, button_y, UI_CONFIG.button_size, UI_CONFIG.button_size))
+    self._draw_model_source(button_x, button_y + UI_CONFIG.button_size + 24)
+
+  def _draw_model_source(self, x: float, y: float) -> None:
+    """Big model status under the experimental mode button, for the whole drive: pulsing while loading, green
+    when the big model is driving, orange once it has failed and the small model took over."""
+    if ui_state.chestnut_state == ChestnutState.LOADING:
+      icon, opacity = self._txt_chestnut, 0.35 + 0.65 * (0.5 - 0.5 * math.cos(rl.get_time() * 6.0))
+    elif ui_state.chestnut_state in (ChestnutState.UNCOMPILED, ChestnutState.FAILED):
+      icon, opacity = self._txt_chestnut_orange, 1.0
+    elif ui_state.chestnut_state == ChestnutState.ACTIVE:
+      icon, opacity = self._txt_chestnut_green, 1.0
+    else:
+      return
+    pos = rl.Vector2(x + (UI_CONFIG.button_size - icon.width) / 2, y)
+    rl.draw_texture_ex(icon, pos, 0.0, 1.0, rl.Color(255, 255, 255, int(255 * opacity)))
 
   def user_interacting(self) -> bool:
     return self._exp_button.is_pressed
