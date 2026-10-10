@@ -7,7 +7,7 @@ On the Mac, from the openpilot repo root with the venv active:
   python -m openpilot.selfdrive.modeld.remote_model_server install    # launchd starts it when the comma is plugged in
   python -m openpilot.selfdrive.modeld.remote_model_server uninstall
 
-Defaults to tinygrad's METAL backend with FLOAT16, BEAM=2 kernel search and JIT=2 (no graph batching, which
+Defaults to tinygrad's METAL backend with FLOAT16, TC_OPT=2, BEAM=1 / JITBEAM=3 kernel search and JIT=2 (no graph batching, which
 modeld's SConscript also uses on METAL); override any of them in the environment. The model is compiled from
 the onnx on every start, the same way tinygrad's examples/openpilot/compile_onnx.py builds the device pickles.
 The onnx is not in the repo since the eGPU model ships precompiled: fetch the one that matches the device's
@@ -24,8 +24,10 @@ attach. Logs go to ~/Library/Logs/openpilot-remote-model.log, and
 import os
 os.environ.setdefault('DEV', 'METAL')
 os.environ.setdefault('FLOAT16', '1')
-os.environ.setdefault('BEAM', '2')  # kernel search, 56ms -> 35ms per frame on an Apple GPU. slow first compile, cached after
-os.environ.setdefault('JIT', '2')   # METAL graph batching gives wrong outputs once input contents change, see modeld's SConscript
+os.environ.setdefault('TC_OPT', '2')
+os.environ.setdefault('BEAM', '1')     # kernel search: light for everything, slow first compile, cached after
+os.environ.setdefault('JITBEAM', '3')  # and harder for the per-frame kernels captured by the JIT
+os.environ.setdefault('JIT', '2')      # METAL graph batching gives wrong outputs once input contents change, see modeld's SConscript
 
 import argparse
 import base64
