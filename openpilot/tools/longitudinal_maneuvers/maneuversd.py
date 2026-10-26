@@ -89,8 +89,8 @@ class Maneuver:
 
 MANEUVERS = [
   Maneuver(
-    "come to stop",
-    [Action([-0.5], [12])],
+    "come to stop, hold 20s",
+    [Action([-0.5], [12]), Action([-0.5], [20])],  # stopped by ~10s, then a 20s standstill hold
     repeat=2,
     initial_speed=5.,
   ),
